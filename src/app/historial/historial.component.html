@@ -1,0 +1,100 @@
+<div class="container py-4">
+
+    @if (isAdmin$ | async) {
+    <h1 class="mb-4 text-danger">⚠️ Gestión de Órdenes (MODO ADMINISTRADOR)</h1>
+    <p class="text-muted">Mostrando todas las ventas del sistema para gestión y cancelación.</p>
+    } @else {
+    <h1 class="mb-4">📜 Historial de Mis Pedidos</h1>
+    }
+    <hr>
+
+    @if (loading) {
+    <div class="text-center p-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p class="mt-2">Cargando tu historial de compras...</p>
+    </div>
+    } @else if (errorMessage) {
+    <div class="alert alert-danger text-center">{{ errorMessage }}</div>
+    } @else if (historialVentas.length === 0) {
+    <div class="alert alert-info text-center p-4">
+        <h4 class="alert-heading">No tienes pedidos anteriores.</h4>
+        <p class="mb-0">¡Es un buen momento para empezar! Dirígete al catálogo.</p>
+        <a [routerLink]="['/catalogo']" class="btn btn-primary mt-3">Ir al Catálogo</a>
+    </div>
+    } @else {
+    <div class="accordion" id="historialAccordion">
+
+        @for (venta of historialVentas; track venta.idventa) {
+        <div class="accordion-item mb-3 shadow-sm">
+
+            <h2 class="accordion-header" [id]="'heading'+venta.idventa">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                    [attr.data-bs-target]="'#collapse'+venta.idventa" aria-expanded="false"
+                    [attr.aria-controls]="'collapse'+venta.idventa">
+                    <div class="row w-100 align-items-center">
+                        <div class="col-12 col-md-4">
+                            <strong class="text-primary">Orden #{{ venta.idventa }}</strong>
+                        </div>
+                        <div class="col-12 col-md-3 small">
+                            {{ formatDate(venta.fecha) }}
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <span [class]="getEstadoClass(venta.estadopedido)">{{ venta.estadopedido }}</span>
+                        </div>
+                        <div class="col-6 col-md-3 text-end fw-bold">
+                            Total: ${{ venta.totalventa | number: '1.2-2' }}
+                        </div>
+                    </div>
+                </button>
+            </h2>
+
+            <div [id]="'collapse'+venta.idventa" class="accordion-collapse collapse"
+                [attr.aria-labelledby]="'heading'+venta.idventa" data-bs-parent="#historialAccordion">
+                <div class="accordion-body bg-light">
+
+                    @if (isAdmin$ | async) {
+                    @if (venta.estadopedido.toUpperCase() !== 'CANCELADO') {
+                    <div class="mb-4 text-end">
+                        <button class="btn btn-danger" (click)="cancelarVenta(venta.idventa)">
+                            <i class="bi bi-x-circle me-2"></i> Cancelar Venta y Revertir Stock
+                        </button>
+                    </div>
+                    } @else {
+                    <div class="mb-4 text-end text-danger fw-bold">
+                        Esta venta ya está CANCELADA.
+                    </div>
+                    }
+                    }
+
+                    <div class="mb-3 p-3 border rounded bg-white">
+                        <h6>Punto de Entrega Seleccionado:</h6>
+                        <p class="mb-0">**{{ venta.nombrepunto }}**</p>
+                    </div>
+
+                    <h6>Productos Incluidos:</h6>
+                    <ul class="list-group list-group-flush small">
+                        @for (detalle of venta.detalles; track detalle.iddetalle) {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge bg-secondary me-2">{{ detalle.cantidad }}x</span>
+                                **{{ detalle.titulo }}** de *{{ detalle.artista }}*
+                            </div>
+                            <span>${{ (detalle.precioUnitario * detalle.cantidad) | number: '1.2-2' }}</span>
+                        </li>
+                        }
+                        @empty {
+                        <li class="list-group-item">No hay detalles de productos para esta orden.</li>
+                        }
+                    </ul>
+
+                </div>
+            </div>
+        </div>
+        }
+        @empty {
+        }
+    </div>
+    }
+</div>

@@ -1,0 +1,122 @@
+<div class="container py-5">
+    <h1 class="mb-4 text-center">Finalizar Compra</h1>
+    <hr>
+
+    @if (purchaseComplete) {
+    <div class="alert alert-success text-center p-5 animate__animated animate__fadeIn">
+        <h3 class="alert-heading">✅ ¡Tu pedido ha sido confirmado!</h3>
+        <p class="fs-5">Tu número de orden es: **#{{ ventaExitosaData.idVenta }}**</p>
+        <p>Total pagado: **${{ ventaExitosaData.totalVenta | number: '1.2-2' }}**</p>
+        <p class="mb-0">Recibirás un correo electrónico con los detalles. Gracias por tu compra.</p>
+        <a [routerLink]="['/historial']" class="btn btn-primary mt-3">Ver Mis Pedidos</a>
+    </div>
+    } @else {
+    <div class="row">
+        <div class="col-lg-8">
+            @if (errorMessage) {
+            <div class="alert alert-danger">{{ errorMessage }}</div>
+            }
+
+            <form [formGroup]="checkoutForm" (ngSubmit)="confirmarCompra()">
+
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h5>1. Seleccionar Punto de Entrega</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Selecciona dónde deseas recoger tu pedido. El costo de envío fijo de
+                            $80.00 aplica a cualquier punto.</p>
+
+                        @if (puntosEntrega$ | async; as puntos) {
+                        <div class="row g-3">
+                            @for (punto of puntos; track punto.idpunto) {
+                            <div class="col-md-6">
+                                <div class="card h-100 p-3"
+                                    [ngClass]="{'border-primary shadow-sm': f['idpunto'].value == punto.idpunto}">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="idpunto"
+                                            [id]="'punto'+punto.idpunto" [value]="punto.idpunto"
+                                            formControlName="idpunto">
+                                        <label class="form-check-label w-100" [for]="'punto'+punto.idpunto">
+                                            <strong class="d-block">{{ punto.nombrepunto }}</strong>
+                                            <span class="small text-muted">{{ punto.direccioncompleta }}</span>
+                                            <span class="d-block small mt-1">Horario: {{ punto.horarioatencion }}</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            } @empty {
+                            <div class="alert alert-warning">No hay puntos de entrega disponibles.</div>
+                            }
+                        </div>
+                        }
+
+                        @if (f['idpunto'].invalid && f['idpunto'].touched) {
+                        <div class="alert alert-danger mt-3 small p-2">Debes seleccionar un punto de entrega.</div>
+                        }
+                    </div>
+                </div>
+
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h5>2. Detalles de Pago</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-info">Pago simulado: En este proyecto, asumimos que el pago fue procesado
+                            exitosamente al presionar "Confirmar Compra".</p>
+                        <img src="tarjeta.png" height="100" width="180" alt="Simulación de Pago">
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2 mt-4">
+                    <button type="submit" class="btn btn-success btn-lg" [disabled]="checkoutForm.invalid || loading">
+                        @if (loading) {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        }
+                        {{ loading ? 'Procesando Compra...' : 'Confirmar Compra' }}
+                    </button>
+                </div>
+
+            </form>
+        </div>
+
+        <div class="col-lg-4">
+            @if (resumenVenta$ | async; as resumen) {
+            <div class="card shadow-lg sticky-top" style="top: 20px;">
+                <div class="card-header bg-primary text-white">
+                    Detalles de la Transacción
+                </div>
+                <div class="card-body">
+                    <h6 class="mb-3">Productos ({{ resumen.items.length }} ítems)</h6>
+                    <ul class="list-group list-group-flush mb-3 small">
+                        @for (item of resumen.items; track item.producto.idProd) {
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <span class="text-truncate">{{ item.cantidad }}x {{ item.producto.titulo }}</span>
+                            <span>${{ (item.producto.precio * item.cantidad) | number: '1.2-2' }}</span>
+                        </li>
+                        }
+                    </ul>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-between"><span>Subtotal:</span><span>${{ resumen.subtotal |
+                            number: '1.2-2' }}</span></div>
+                    <div class="d-flex justify-content-between small text-muted"><span>Costo de Envío:</span><span>+ ${{
+                            resumen.costoEnvio | number: '1.2-2' }}</span></div>
+                    <div class="d-flex justify-content-between small text-muted"><span>IVA (16%):</span><span>+ ${{
+                            resumen.iva | number: '1.2-2' }}</span></div>
+
+                    <hr class="my-3">
+
+                    <div class="d-flex justify-content-between fw-bold fs-4">
+                        <span>Total a Pagar:</span>
+                        <span class="text-success">${{ resumen.total | number: '1.2-2' }}</span>
+                    </div>
+                </div>
+            </div>
+            }
+        </div>
+
+    </div>
+    }
+</div>

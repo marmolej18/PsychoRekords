@@ -1,0 +1,143 @@
+<div class="container py-4">
+  <h1 class="mb-4">📈 Panel de Reportes Administrativos</h1>
+  <hr>
+
+  @if (errorMessage) {
+    <div class="alert alert-danger">{{ errorMessage }}</div>
+  }
+
+  <div class="card shadow-sm mb-5">
+    <div class="card-header bg-success text-white">
+      <h5>🥇 Top Productos más Rentables (VISTA: vw_productos_rentables)</h5>
+    </div>
+    <div class="card-body">
+      @if (loadingRentables) {
+        <div class="text-center py-3"><span class="spinner-border spinner-border-sm me-2"></span> Cargando...</div>
+      } @else if (reporteRentables.length > 0) {
+        <div class="table-responsive">
+          <table class="table table-striped table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>#</th>
+                <th>Título</th>
+                <th>Artista</th>
+                <th class="text-center">Formato</th>
+                <th class="text-center">Unidades Vendidas (SUM)</th>
+                <th class="text-end">Ingreso Bruto (SUM)</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of reporteRentables; track r.idprod) {
+                <tr>
+                  <td>{{ $index + 1 }}</td>
+                  <td>{{ r.titulo }}</td>
+                  <td>{{ r.artista }}</td>
+                  <td class="text-center">{{ r.formato }}</td>
+                  <td class="text-center fw-bold">{{ r.total_unidades_vendidas }}</td>
+                  <td class="text-end fw-bold text-success">${{ r.total_ingreso_generado | number: '1.2-2' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <div class="alert alert-info">No hay datos de rentabilidad disponibles.</div>
+      }
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-header bg-info text-white">
+      <h5>📉 Ventas Detalladas y Totales (VISTA: vw_ventas_por_formato con ROLLUP)</h5>
+      <span class="small">(Muestra subtotales por Artista y Total General)</span>
+    </div>
+    <div class="card-body">
+      @if (loadingFormato) {
+        <div class="text-center py-3"><span class="spinner-border spinner-border-sm me-2"></span> Cargando...</div>
+      } @else if (reporteVentasFormato.length > 0) {
+        <div class="table-responsive">
+          <table class="table table-bordered table-sm align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Artista</th>
+                <th class="text-center">Formato</th>
+                <th class="text-center">Órdenes (COUNT)</th>
+                <th class="text-center">Unidades (SUM)</th>
+                <th class="text-end">Ingreso Bruto (SUM)</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of reporteVentasFormato; track $index) {
+                @if (esFilaRollup(r.artista, r.formato)) {
+                  <tr [ngClass]="{'table-warning fw-bold': r.artista !== null, 'table-dark text-white fw-bolder': r.artista === null}">
+                    <td>
+                      @if (r.artista === null) {
+                        TOTAL GENERAL TIENDA
+                      } @else {
+                        SUBTOTAL Artista: {{ r.artista }}
+                      }
+                    </td>
+                    <td class="text-center">{{ r.formato === null ? '---' : r.formato }}</td>
+                    <td class="text-center">{{ r.total_ordenes }}</td>
+                    <td class="text-center">{{ r.total_unidades_vendidas }}</td>
+                    <td class="text-end">${{ r.ingreso_bruto | number: '1.2-2' }}</td>
+                  </tr>
+                } @else {
+                  <tr>
+                    <td>{{ r.artista }}</td>
+                    <td class="text-center">{{ r.formato }}</td>
+                    <td class="text-center">{{ r.total_ordenes }}</td>
+                    <td class="text-center">{{ r.total_unidades_vendidas }}</td>
+                    <td class="text-end">${{ r.ingreso_bruto | number: '1.2-2' }}</td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <div class="alert alert-info">No hay datos de ventas por formato disponibles.</div>
+      }
+    </div>
+  </div>
+</div>
+
+
+
+<div class="card shadow-sm mt-4">
+    <div class="card-header bg-danger text-white">
+        <h5>📉 Auditoría y Trazabilidad de Stock (TRIGGER: tr_auditoria_stock)</h5>
+        <span class="small">(Cada cambio de stock, incluyendo ventas y cancelaciones, se registra aquí.)</span>
+    </div>
+    <div class="card-body">
+        <div class="mb-3">
+            <label for="productSelector" class="form-label">Selecciona Producto para Auditoría:</label>
+            <select id="productSelector" class="form-select w-50" (change)="onSelectProduct($event)">
+                <option [value]="null">-- Selecciona un Producto --</option>
+                @for (r of reporteRentables; track r.idprod) {
+                    <option [value]="r.idprod">{{ r.titulo }} de {{ r.artista }}</option>
+                }
+            </select>
+        </div>
+
+        @if (loadingTrazabilidad) {
+             <div class="text-center py-3"><span class="spinner-border spinner-border-sm me-2"></span> Cargando historial de stock...</div>
+        } @else if (selectedProdId && trazabilidadStockData.length > 0) {
+            <ngx-charts-line-chart
+                [view]="view"
+                [scheme]="'forest'"
+                [results]="trazabilidadStockData"
+                [gradient]="true"
+                [xAxis]="showXAxis"
+                [yAxis]="showYAxis"
+                [showXAxisLabel]="showXAxisLabel"
+                [showYAxisLabel]="showYAxisLabel"
+                [xAxisLabel]="xAxisLabelTrazabilidad"
+                [yAxisLabel]="yAxisLabelTrazabilidad"
+                [legend]="false">
+            </ngx-charts-line-chart>
+        } @else if (selectedProdId) {
+             <div class="alert alert-warning">No se encontraron movimientos de stock para este producto en el log de auditoría.</div>
+        }
+    </div>
+</div>

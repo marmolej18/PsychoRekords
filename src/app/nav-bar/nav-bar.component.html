@@ -1,0 +1,114 @@
+<nav class="navbar navbar-expand-lg navbar-dark custom-navbar sticky-top">
+  <div class="container-fluid">
+
+    <a class="navbar-brand d-flex align-items-center" [routerLink]="['/inicio']">
+      <img src="logo_trnsp.png" alt="Logo de la tienda" width="auto" height="60" class="me-2">
+    </a>
+
+    <button class="navbar-toggler custom-toggler" type="button" data-bs-toggle="collapse"
+      data-bs-target="#mainNavbarContent" aria-controls="mainNavbarContent" aria-expanded="false"
+      aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="mainNavbarContent">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0 links">
+
+        <li class="nav-item">
+          <a class="nav-link" [routerLink]="['/inicio']" routerLinkActive="active"
+            [routerLinkActiveOptions]="{exact: true}">Inicio</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" [routerLink]="['/catalogo']" routerLinkActive="active">Catálogo</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" [routerLink]="['/nosotros']" routerLinkActive="active">Nosotros</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" [routerLink]="['/qya']" routerLinkActive="active">FAQ</a>
+        </li>
+
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+          <div class="container-fluid">
+            <div class="collapse navbar-collapse" id="navbarNav">
+              <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                @if (isAdmin$ | async) {
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle text-warning" href="#" id="adminDropdown" role="button"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                    Administración
+                  </a>
+                  <ul class="dropdown-menu" aria-labelledby="adminDropdown">
+                    <li><a class="dropdown-item" [routerLink]="['/admin/inventario']">Inventario</a></li>
+
+                    <li><a class="dropdown-item" [routerLink]="['/admin/reportes']">Reportes Financieros</a></li>
+
+                    <li>
+                      <hr class="dropdown-divider">
+                    </li>
+                    <li><a class="dropdown-item" [routerLink]="['/admin/usuarios']">Gestión de Usuarios</a></li>
+                  </ul>
+                </li>
+                }
+              </ul>
+
+            </div>
+          </div>
+        </nav>
+
+        <li class="nav-item">
+          <a [routerLink]="['/carrito']" class="nav-link position-relative" title="Ver Carrito">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="9" cy="21" r="1"></circle>
+              <circle cx="20" cy="21" r="1"></circle>
+              <path d="M1 1h4l2.68 12.08a2 2 0 0 0 2 1.92h9.72a2 2 0 0 0 2-1.92L23 6H6"></path>
+            </svg>
+            @if (cartItemCount$ | async; as count) {
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+              style="font-size: 0.6em;">
+              {{ count }}
+            </span>
+            }
+          </a>
+        </li>
+
+        <li class="nav-item dropdown">
+          @if (isLoggedIn$ | async) {
+          <a class="nav-link" href="#" id="navbarDropdownProfile" role="button" data-bs-toggle="dropdown"
+            aria-expanded="false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2a4 4 0 1 0 0 8a4 4 0 0 0 0-8z"></path>
+              <path d="M12 11c-2.7 0-6 1.2-6 3v2h12v-2c0-1.8-3.3-3-6-3z"></path>
+            </svg>
+            {{ (username$ | async)?.nombre }}
+          </a>
+
+          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownProfile">
+            <li><a class="dropdown-item" [routerLink]="['/perfil']">Mi Perfil</a></li>
+            <li><a class="dropdown-item" [routerLink]="['/historial']">Mis Pedidos</a></li>
+            <li>
+              <hr class="dropdown-divider">
+            </li>
+            <li><a class="dropdown-item" (click)="logout()">Cerrar Sesión</a></li>
+          </ul>
+
+
+          } @else {
+          <a [routerLink]="['/login']" class="nav-link" title="Iniciar sesión" aria-label="Iniciar sesión">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" />
+              <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+            </svg>
+          </a>
+          }
+
+        </li>
+
+      </ul>
+
+    </div>
+  </div>
+</nav>

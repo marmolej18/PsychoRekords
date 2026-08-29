@@ -1,0 +1,117 @@
+@media (max-width: 600px) {
+
+    .contenido_inicio {
+        padding: 15px;
+        text-align: center;
+    }
+    .Bienve{
+        margin-top: 1.5rem !important;
+    }
+
+    .logincom {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        gap: 8px;
+    }
+
+    .Bienve h1 {
+        font-size: 2.8rem;
+    }
+
+    .Bienve h3 {
+        font-size: 1.5rem;
+    }
+
+    /* Formulario */
+    .form {
+        width: 90%;
+        max-width: 320px;
+        margin: 0 auto;
+    }
+
+    .contenedor_campos {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .campo input {
+        width: 100%;
+        max-width: 250px;
+        font-size: 1.7rem;
+        padding: 0.7rem;
+        margin: 0 auto;
+        display: block;
+    }
+
+    .button {
+        width: 100%;
+        max-width: 300px;
+        font-size: 1.5rem;
+        padding: 0.8rem;
+        margin: 10px auto;
+        display: block;
+        text-align: center;
+    }
+
+    p {
+        margin-top: 10px;
+    }
+}
+
+
+@media (min-width: 601px) and (max-width: 992px) {
+
+    .contenido_inicio {
+        padding: 40px;
+        text-align: center;
+    }
+
+    .form {
+        width: 70%;
+        max-width: 450px;
+        margin: 0 auto;
+    }
+
+    .contenedor_campos {
+        gap: 18px;
+        align-items: center;
+    }
+
+    .campo input {
+        width: 100%;
+        max-width: 380px;
+        padding: 0.9rem;
+        font-size: 1.8rem;
+    }
+
+    .button {
+        width: 100%;
+        max-width: 380px;
+        padding: 1rem;
+        font-size: 1.6rem;
+        margin-top: 5px;
+    }
+
+    .Bienve h1 {
+        font-size: 3.5rem;
+    }
+}
+
+.logincom {
+    margin-top: 3.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    gap: 15px;
+}
+
+.Bienve{
+    margin-top: -5rem;
+}

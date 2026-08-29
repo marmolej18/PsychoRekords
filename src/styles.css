@@ -1,0 +1,745 @@
+/* You can add global styles to this file, and also import other style files */
+:root {
+    --lightGr: #D2FF72;
+    --green: #3cea5f;
+    --darkGr: #15B392;
+    --darkBl: #031A16;
+    --white: #FFFFFF;
+    --gray: #EEEAEA;
+    --lima: #19d819;
+    --azulClaro: #a8e1eb;
+    --blanco: #ffffff;
+    --oscuro: #212121;
+    --verdeClaro: #8af682;
+    --verdeClaro2: #c3f5c0;
+}
+
+html {
+    font-size: 62.5%;
+    box-sizing: border-box;
+    height: 100%;
+}
+
+*,
+*:before,
+*:after {
+    box-sizing: inherit;
+}
+
+h1 {
+    font-size: 4rem;
+}
+
+h2 {
+    font-size: 3rem;
+}
+
+h3 {
+    font-size: 2rem;
+}
+
+h1,
+h2,
+h3 {
+    text-align: center;
+}
+
+body {
+    font-size: 16px;
+    font-family: "Barlow", sans-serif;
+
+}
+
+/* UTILIDADES */
+
+/* LOGO Y BARRA DE BUSQUEDA */
+.cabecera {
+    padding: 0.1rem;
+    background-color: var(--green);
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    align-items: center;
+    justify-items: center;
+    border-bottom: 1px solid var(--darkBl);
+}
+
+.header_logo {
+    width: 90px !important;
+    height: 90px !important;
+}
+
+/* BARRA DE NAGEVACION */
+.navegacion-principal {
+    background-color: var(--green);
+    padding: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-direction: row;
+}
+
+.header_logo {
+    width: 80px;
+    height: 80px;
+}
+
+.search {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 20px;
+}
+
+.search input {
+    padding: 10px;
+    border: 2px solid #ccc;
+    border-radius: 20px 0 0 20px;
+    outline: none;
+    font-size: 16px;
+    transition: border-color 0.3s;
+}
+
+.search input:focus {
+    border-color: #000000b3;
+}
+
+.search button {
+    padding: 10px 20px;
+    background-color: #077d15;
+    color: white;
+    border: none;
+    border-radius: 0 20px 20px 0;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+
+.search button:hover {
+    background-color: #073e09;
+}
+
+.link {
+    position: relative;
+    padding: 1rem;
+    text-align: center;
+}
+
+.link a {
+    font-size: 2.1rem;
+    font-weight: 700;
+}
+
+.link::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 0;
+    height: 2.3px;
+    background-color: rgb(3, 60, 24);
+    transition: width 0.3s ease, left 0.3s ease;
+}
+
+.link:hover::after {
+    width: 100%;
+    left: 0;
+}
+
+.link a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* MAIN */
+.Imagen-Bienvenida {
+    background-image: url(../public/tornamesa-gif.gif);
+    height: 550px;
+    background-attachment: fixed;
+    /* Hace que la imagen se quede fija al hacer scroll */
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.Contenido-Bienvenida h1 {
+    font-size: 7rem;
+    color: white;
+}
+
+.Contenido-Bienvenida p {
+    font-size: 3rem;
+    color: white;
+}
+
+.Contenido-Bienvenida {
+    padding: 2rem;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+    /* Asegura que el contenido esté encima de la imagen */
+    color: var(--white);
+    font-size: 2.5rem;
+    font-weight: bold;
+}
+
+.Imagen-Bienvenida::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    /* Opcional: capa semitransparente */
+    z-index: 0;
+}
+
+.secciones-tienda {
+    padding: 2rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+}
+
+.secciones-tienda img {
+    display: block;
+    margin: 0 auto;
+    border-radius: 1rem;
+    width: 210px;
+    height: 220px;
+    transition: transform 0.6s ease;
+}
+
+.secciones-tienda img:hover {
+    transform: scale(1.1);
+
+}
+
+@media(min-width: 769px) {
+    .secciones-tienda {
+        grid-template-columns: repeat(2, 1fr);
+        /* Dos columnas en pantallas grandes */
+    }
+
+    .secciones-tienda img {
+        width: auto;
+        height: auto;
+    }
+}
+
+/* Area De Productos */
+.contenedor h1 {
+    color: var(--darkBl);
+}
+
+/*Acomoda los productos depepndiendo de donde se vea*/
+.grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    padding: 2rem;
+}
+
+@media(min-width: 768px) {
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.Producto {
+    background-color: #15c86bd0;
+    padding: 1.4rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.81);
+}
+
+.Producto_Nombre {
+    font-size: 3.5rem;
+    color: var(--darkBl);
+}
+
+.Producto_Precio {
+    font-size: 2.8rem;
+    color: #000000;
+    font-weight: bold;
+}
+
+.Producto_Imagen {
+    width: 355px;
+    height: 355px;
+    transition: transform 0.4s ease;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.679);
+}
+
+.Producto_Imagen:hover {
+    transform: scale(1.08);
+}
+
+.Producto_Nombre,
+.Producto_Precio {
+    font-family: "Barlow", sans-serif;
+    margin: 1rem, 0;
+    text-align: center;
+}
+
+.Producto a {
+    text-decoration: none;
+}
+
+.Producto_Detalle {
+    background-color: var(--darkGr);
+    padding: 1rem;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+}
+
+.Producto_Detalle_Informacion {
+    width: 350px;
+}
+
+.contenedor-producto-detalle {
+    display: flex;
+    justify-content: center;
+    margin: 20px;
+}
+
+.addToCart {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    background-color: var(--green);
+    color: var(--darkBl);
+    padding: 1rem 4rem;
+    text-decoration: none;
+    font-weight: bold;
+    border-radius: 0.5rem;
+    text-align: center;
+    border: none;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+.addToCart:hover {
+    background-color: var(--darkBl);
+    color: var(--white);
+    cursor: pointer;
+}
+
+/* FORMULARIO DE INICIO DE SESION */
+.inicio_sesion {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 2rem;
+}
+
+.form {
+    background-color: var(--white);
+    width: 80%;
+    height: auto;
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+@media(min-width: 768px) {
+    .form {
+        width: 60%;
+    }
+}
+
+.contenedor_campos {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 3rem;
+}
+
+.campo {
+    padding: 1rem;
+    width: 100%;
+    /* Hace que .campo ocupe el 100% del ancho de .form */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.campo label {
+    margin-bottom: 1rem;
+    font-weight: bold;
+}
+
+.input-text,
+.selector {
+    width: 80%;
+    border: none;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    background-color: var(--gray);
+}
+
+.button {
+    background-color: var(--green);
+    color: var(--darkBl);
+    padding: 1rem 4rem;
+    text-decoration: none;
+    font-weight: bold;
+    border-radius: 0.5rem;
+    text-align: center;
+    border: none;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+.button:hover {
+    background-color: var(--darkGr);
+}
+
+
+/*Q&A*/
+.contenedorQyA {
+    justify-content: center;
+
+    h3 {
+        font-size: 2.4rem;
+        margin-top: 5rem;
+    }
+}
+
+.contlabel {
+    display: block;
+    cursor: pointer;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 5px;
+    font-weight: bold;
+    width: 83%;
+    margin-left: 130px;
+    margin-top: 1rem;
+
+    h1 {
+        font-size: 1.7rem;
+    }
+}
+
+.contlabel:hover {
+    transform: scale(1.0);
+    background-color: #dedfe0;
+    border-radius: 1rem;
+}
+
+.contanswer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.1s ease-in-out;
+    padding: 0 15px;
+    margin-top: -1px;
+    border-bottom: 1px solid #ccc;
+    width: 84%;
+    margin: 0 auto;
+    border-radius: 0 0 5px 5px;
+    background-color: #FFFFFF;
+
+    p {
+        font-size: 1.7rem;
+    }
+}
+
+input[type="checkbox"] {
+    display: none;
+}
+
+input[type="checkbox"]:checked+.contlabel+.contanswer {
+    max-height: 200px;
+    padding: 15px;
+}
+
+@media (max-width: 768px) {
+    .contenedorQyA {
+        width: 90%;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .contlabel {
+        width: 90%;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .contanswer {
+        width: 90%;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .contlabel h1 {
+        font-size: 1.4rem;
+    }
+
+    .contenedor-socialMedia .link {
+        margin: 5px;
+    }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+    .cabecera {
+        justify-content: space-between;
+        padding: 10px;
+    }
+
+    .contenedorQyA {
+        width: 80%;
+    }
+
+    .contlabel {
+        width: 80%;
+    }
+
+    .contanswer {
+        width: 80%;
+    }
+}
+
+/* SOBRE NOSOTROS */
+.contenedorAboutUs {
+    margin-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.cabeceraAbUs {
+    background-image: url(../public/banner_us.png);
+    background-attachment: fixed;
+    /* Hace que la imagen se quede fija al hacer scroll */
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    position: relative;
+    color: var(--white);
+    height: 450px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.contenidoAboutUs {
+    width: 80%;
+}
+
+.contenidoAboutUs p {
+    font-size: 2rem;
+    text-align: justify;
+}
+
+/* AL PIE DE PAGINA */
+.contenedor-socialMedia {
+    display: flex;
+    justify-content: center;
+    background-color: #83f883;
+}
+
+.social-media-links {
+    width: 20%;
+    padding: 1rem;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    justify-content: center;
+    align-items: center;
+}
+
+.legend-footer {
+    background-color: var(--darkGr);
+    color: var(--white);
+    padding: 2rem;
+    text-align: center;
+}
+
+.Titulo_Compras {
+    background-color: #ffffff;
+    border-radius: 2rem;
+    margin-bottom: 2rem;
+    border-color: #031A16;
+}
+
+
+.Cuestionario_Compras {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    /* Dos columnas iguales */
+    gap: 20px;
+    /* Espacio entre las columnas */
+    align-items: start;
+    /* Alinea las secciones al inicio */
+}
+
+.izquierda-Cuestionario,
+.derecha-Cuestionario {
+    display: flex;
+    flex-direction: column;
+    /* Campos en columna */
+    gap: 10px;
+    /* Espaciado uniforme entre los campos */
+}
+
+.izquierda-Cuestionario h3 {
+    grid-column: span 2;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+/* Aseguramos un ancho consistente entre etiquetas y campos */
+.izquierda-Cuestionario div,
+.derecha-Cuestionario div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.izquierda-Cuestionario input {
+    margin-bottom: 1.5rem;
+}
+
+.derecha-Cuestionario input {
+    margin-bottom: 1rem;
+}
+
+.derecha-Cuestionario h3 {
+    margin-bottom: 1rem;
+}
+
+label {
+    flex: 0 0 100px;
+    text-align: left;
+    font-weight: bold;
+}
+
+.input-text {
+    background-color: #fcfcfcb3;
+    padding: 10px;
+    border: 1px solid #0f6b2a88;
+    border-radius: 5px;
+    font-size: 1.6rem;
+    box-sizing: border-box;
+    /* Evita que el padding altere el tamaño total */
+    margin-left: 9rem;
+}
+
+.boton {
+    grid-column: span 2;
+    background-color: #20f06cdd;
+    color: var(--oscuro);
+    border: none;
+    padding: 1.4rem 2rem;
+    font-size: 1.6rem;
+    font-weight: bold;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    width: 20%;
+    margin: 0 auto;
+    margin-bottom: 2.3rem;
+
+}
+
+.boton:hover {
+    background-color: #47d5c0b3;
+    color: var(--oscuro);
+}
+
+.boton:active {
+    background-color: var(--oscuro);
+    color: var(--blanco);
+}
+
+
+.Inf_Producto {
+    background-color: #ffffffb3;
+}
+
+.Box_Compra {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+
+}
+
+.Box_Compra button {
+    margin-bottom: 10px;
+    width: 10%;
+}
+
+/* FORMULARIO DE INICIO DE SESION */
+.logincom {
+    grid-template-columns: repeat(2, 1fr);
+    display: flex;
+    justify-content: center;
+    margin-bottom: 2rem;
+}
+
+.Bienve {
+    align-items: center;
+    margin-top: 14rem;
+}
+
+.Bienve h1 {
+    font-size: 5rem;
+    color: #2cb648;
+}
+
+.form {
+    background-color: var(--white);
+    width: 55rem;
+    height: 45rem;
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-top: 4rem;
+    /* Baja el formulario */
+    font-size: 0.9rem;
+    margin-left: 13rem;
+}
+
+.contenedor_campos {
+    margin-top: 1rem;
+}
+
+.campo label {
+    font-size: 1rem;
+}
+
+.campo input {
+    font-size: 2rem;
+    width: 30rem;
+    background-color: #ededed;
+    justify-content: center;
+    margin-right: 11rem;
+}
+
+.button {
+    font-size: 1.8rem;
+    cursor: pointer;
+}
+
+.form a {
+    font-size: 1.6rem;
+}
+
+.form p {
+    font-size: 1.6rem;
+}

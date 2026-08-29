@@ -1,0 +1,131 @@
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+            <div class="card shadow-lg border-0">
+                <div class="card-body p-4 p-md-5">
+                    <h2 class="card-title text-center mb-4">Registro de Usuario</h2>
+                    <hr>
+
+                    @if (errorMessage) {
+                    <div class="alert alert-danger" role="alert">{{ errorMessage }}</div>
+                    }
+                    @if (successMessage) {
+                    <div class="alert alert-success" role="alert">{{ successMessage }}</div>
+                    }
+
+                    <form [formGroup]="registroForm" (ngSubmit)="onSubmit()">
+
+                        <h5 class="mt-4 mb-3 text-primary">Credenciales y Contacto</h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="correoElectronico" class="form-label">Correo Electrónico *</label>
+                                <input type="email" class="form-control" id="correoElectronico"
+                                    formControlName="correoElectronico"
+                                    [ngClass]="{'is-invalid': f['correoElectronico'].invalid && f['correoElectronico'].touched}">
+                                @if (f['correoElectronico'].errors && f['correoElectronico'].touched) {
+                                <div class="invalid-feedback">
+                                    @if (f['correoElectronico'].errors['required']) {
+                                    <span>El correo es obligatorio.</span>
+                                    }
+                                    @if (f['correoElectronico'].errors['email']) {
+                                    <span>Debe ser un correo válido.</span>
+                                    }
+                                </div>
+                                }
+                            </div>
+                            <div class="col-md-6">
+                                <label for="password" class="form-label">Contraseña *</label>
+                                <input type="password" class="form-control" id="password" formControlName="password"
+                                    [ngClass]="{'is-invalid': f['password'].invalid && f['password'].touched}">
+                                @if (f['password'].errors && f['password'].touched) {
+                                <div class="invalid-feedback">
+                                    @if (f['password'].errors['required']) {
+                                    <span>La contraseña es obligatoria.</span>
+                                    }
+                                    @if (f['password'].errors['minlength']) {
+                                    <span>Mínimo 6 caracteres.</span>
+                                    }
+                                </div>
+                                }
+                            </div>
+                            <div class="col-md-6">
+                                <label for="telefono" class="form-label">Teléfono (Opcional)</label>
+                                <input type="text" class="form-control" id="telefono" formControlName="telefono">
+                            </div>
+                        </div>
+
+                        <h5 class="mt-4 mb-3 text-primary">Información Personal</h5>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label for="nombre" class="form-label">Nombre *</label>
+                                <input type="text" class="form-control" id="nombre" formControlName="nombre"
+                                    [ngClass]="{'is-invalid': f['nombre'].invalid && f['nombre'].touched}">
+                                @if (f['nombre'].errors && f['nombre'].touched) {
+                                <div class="invalid-feedback">El nombre es obligatorio.</div>
+                                }
+                            </div>
+                            <div class="col-md-4">
+                                <label for="apellidoP" class="form-label">Apellido Paterno *</label>
+                                <input type="text" class="form-control" id="apellidoP" formControlName="apellidoP"
+                                    [ngClass]="{'is-invalid': f['apellidoP'].invalid && f['apellidoP'].touched}">
+                                @if (f['apellidoP'].errors && f['apellidoP'].touched) {
+                                <div class="invalid-feedback">El apellido paterno es obligatorio.</div>
+                                }
+                            </div>
+                            <div class="col-md-4">
+                                <label for="apellidoM" class="form-label">Apellido Materno (Opcional)</label>
+                                <input type="text" class="form-control" id="apellidoM" formControlName="apellidoM">
+                            </div>
+                        </div>
+
+                        <h5 class="mt-4 mb-3 text-primary">Dirección (Para envíos)</h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="calle" class="form-label">Calle (Opcional)</label>
+                                <input type="text" class="form-control" id="calle" formControlName="calle">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="numCasa" class="form-label">Núm. Casa (Opcional)</label>
+                                <input type="text" class="form-control" id="numCasa" formControlName="numCasa">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="colonia" class="form-label">Colonia (Opcional)</label>
+                                <input type="text" class="form-control" id="colonia" formControlName="colonia">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="CP" class="form-label">Código Postal (Opcional)</label>
+                                <input type="text" class="form-control" id="CP" formControlName="CP">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="ciudad" class="form-label">Ciudad (Opcional)</label>
+                                <input type="text" class="form-control" id="ciudad" formControlName="ciudad">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="estado" class="form-label">Estado (Opcional)</label>
+                                <input type="text" class="form-control" id="estado" formControlName="estado">
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-5">
+                            <button type="submit" class="btn btn-success btn-lg"
+                                [disabled]="registroForm.invalid || loading">
+                                @if (loading) {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"
+                                    aria-hidden="true"></span>
+                                }
+                                {{ loading ? 'Registrando...' : 'Crear Cuenta' }}
+                            </button>
+                        </div>
+
+                        <p class="mt-4 text-center">
+                            ¿Ya tienes cuenta? <a [routerLink]="['/login']">Iniciar Sesión</a>
+                        </p>
+
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>

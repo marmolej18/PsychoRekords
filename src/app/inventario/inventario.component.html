@@ -1,0 +1,148 @@
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Administración de Inventario</h1>
+        <button class="btn btn-primary" (click)="abrirModalCrear()">
+            <i class="bi bi-plus-circle me-2"></i> Crear Nuevo Producto
+        </button>
+    </div>
+    <hr>
+
+    @if (errorMessage) {
+    <div class="alert alert-danger">{{ errorMessage }}</div>
+    }
+    @if (successMessage) {
+    <div class="alert alert-success">{{ successMessage }}</div>
+    }
+
+    @if (loading) {
+    <div class="text-center p-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2">Cargando inventario...</p>
+    </div>
+    } @else if (productos.length === 0) {
+    <div class="alert alert-info text-center">No hay productos en el inventario.</div>
+    } @else {
+    <div class="table-responsive bg-white shadow-sm rounded">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th scope="col">ID</th>
+                    <th scope="col">Título / Artista</th>
+                    <th scope="col">Formato</th>
+                    <th scope="col" class="text-end">Precio</th>
+                    <th scope="col" class="text-center">Stock</th>
+                    <th scope="col" class="text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (producto of productos; track producto.idprod) {
+                <tr>
+                    <td><span class="badge bg-secondary">{{ producto.idprod }}</span></td>
+                    <td>
+                        <div class="fw-bold">{{ producto.titulo }}</div>
+                        <div class="small text-muted">{{ producto.artista }} ({{ producto.aniolanzam }})</div>
+                    </td>
+                    <td>{{ producto.formato }}</td>
+                    <td class="text-end fw-bold text-primary">${{ producto.precio | number: '1.2-2' }}</td>
+                    <td class="text-center">
+                        <span
+                            [ngClass]="{'badge bg-success': producto.cantstock > 10, 'badge bg-warning text-dark': producto.cantstock <= 10, 'badge bg-danger': producto.cantstock === 0}">
+                            {{ producto.cantstock }}
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-outline-info me-2" title="Editar"
+                            (click)="abrirModalEditar(producto)">
+                            🖋️
+                        </button>
+                    </td>
+                </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    }
+</div>
+
+<div class="modal fade" id="productoModal" tabindex="-1" aria-labelledby="productoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="productoModalLabel">{{ modalTitle }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <form [formGroup]="productoForm" (ngSubmit)="onSubmit()">
+                <div class="modal-body">
+                    @if (errorMessage && formSubmitting === false) {
+                    <div class="alert alert-danger">{{ errorMessage }}</div>
+                    }
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Título *</label>
+                            <input type="text" class="form-control" formControlName="titulo"
+                                [ngClass]="{'is-invalid': f['titulo'].invalid && f['titulo'].touched}">
+                            <div class="invalid-feedback">El título es obligatorio.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Artista *</label>
+                            <input type="text" class="form-control" formControlName="artista"
+                                [ngClass]="{'is-invalid': f['artista'].invalid && f['artista'].touched}">
+                            <div class="invalid-feedback">El artista es obligatorio.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Género Musical</label>
+                            <input type="text" class="form-control" formControlName="generomus">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Año Lanzam.</label>
+                            <input type="number" class="form-control" formControlName="aniolanzam"
+                                [ngClass]="{'is-invalid': f['aniolanzam'].invalid && f['aniolanzam'].touched}">
+                            <div class="invalid-feedback">Año debe ser un número válido.</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Formato *</label>
+                            <select class="form-select" formControlName="formato"
+                                [ngClass]="{'is-invalid': f['formato'].invalid && f['formato'].touched}">
+                                <option value="" disabled>Selecciona...</option>
+                                @for (f of formatos; track f) {
+                                <option [value]="f">{{ f }}</option>
+                                }
+                            </select>
+                            <div class="invalid-feedback">El formato es obligatorio.</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Condiciones</label>
+                            <input type="text" class="form-control" formControlName="condiciones">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Precio *</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" class="form-control" formControlName="precio"
+                                    [ngClass]="{'is-invalid': f['precio'].invalid && f['precio'].touched}">
+                            </div>
+                            <div class="invalid-feedback">El precio es obligatorio y debe ser mayor a 0.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Stock *</label>
+                            <input type="number" class="form-control" formControlName="cantstock"
+                                [ngClass]="{'is-invalid': f['cantstock'].invalid && f['cantstock'].touched}">
+                            <div class="invalid-feedback">El stock es obligatorio y no puede ser negativo.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" [disabled]="productoForm.invalid || formSubmitting">
+                        @if (formSubmitting) {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        {{ isEditMode ? 'Guardar Cambios' : 'Crear Producto' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

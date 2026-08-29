@@ -1,0 +1,117 @@
+<div class="container py-4">
+    <h1 class="mb-4">🛒 Mi Carrito de Compras</h1>
+    <hr>
+
+    @if (carritoItems$ | async; as items) {
+    @if (items.length > 0) {
+    <div class="row">
+
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+
+                    <div class="row fw-bold border-bottom pb-2 d-none d-sm-flex">
+                        <div class="col-5">Producto</div>
+                        <div class="col-2 text-center">Precio</div>
+                        <div class="col-2 text-center">Cantidad</div>
+                        <div class="col-2 text-end">Total</div>
+                        <div class="col-1"></div>
+                    </div>
+
+                    @for (item of items; track item.producto.idProd) {
+                    <div class="row align-items-center py-3 border-bottom item-row">
+
+                        <div class="col-12 col-sm-5 d-flex align-items-center">
+                            <img src="{{ item.producto.titulo + '.jpg' }}" height="50" width="50"
+                                (error)="onImageError($event)" class="me-3 rounded">
+                            <div>
+                                <h6 class="mb-0">{{ item.producto.titulo }}</h6>
+                                <p class="text-muted small mb-0">{{ item.producto.artista }}</p>
+                            </div>
+                        </div>
+
+                        <div class="col-6 col-sm-2 text-sm-center text-start mt-2 mt-sm-0">
+                            <span class="d-sm-none fw-bold">Precio: </span>
+                            ${{ item.producto.precio | number: '1.2-2' }}
+                        </div>
+
+                        <div class="col-6 col-sm-2 text-center mt-2 mt-sm-0">
+                            <span class="badge bg-secondary">{{ item.cantidad }}</span>
+                        </div>
+
+                        <div class="col-10 col-sm-2 text-end mt-2 mt-sm-0">
+                            <span class="fw-bold">${{ (item.producto.precio * item.cantidad) | number: '1.2-2' }}</span>
+                        </div>
+
+                        <div class="col-2 col-sm-1 text-end mt-2 mt-sm-0">
+                            <button class="btn btn-sm btn-outline-danger border-0"
+                                (click)="eliminarItem(item.producto.idProd)" title="Eliminar">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    }
+
+                    <div class="d-flex justify-content-end mt-3">
+                        <button class="btn btn-sm btn-outline-secondary" (click)="vaciarCarrito()">Vaciar
+                            Carrito</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            @if (subtotal$ | async; as subtotal) {
+            <div class="card shadow-lg sticky-top" style="top: 20px;">
+                <div class="card-header bg-primary text-white">
+                    Resumen del Pedido
+                </div>
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Subtotal:</span>
+                        <span class="fw-bold">${{ subtotal | number: '1.2-2' }}</span>
+                    </div>
+
+                    @if (subtotal > 0) {
+                    @let iva = calcularIVA(subtotal);
+                    <div class="d-flex justify-content-between mb-2 small text-muted">
+                        <span>IVA ({{ IVA_PORCENTAJE * 100 }}%):</span>
+                        <span>+ ${{ iva | number: '1.2-2' }}</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between mb-3 small text-muted">
+                        <span>Costo de Envío:</span>
+                        <span>+ ${{ COSTO_ENVIO | number: '1.2-2' }}</span>
+                    </div>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-between align-items-center fw-bold fs-5">
+                        <span>Total:</span>
+                        <span class="text-success">${{ calcularTotal(subtotal, iva) | number: '1.2-2' }}</span>
+                    </div>
+
+                    <div class="d-grid mt-4">
+                        <button [routerLink]="['/checkout']" class="btn btn-success btn-lg">
+                            Proceder al Checkout
+                        </button>
+                    </div>
+                    }
+                </div>
+            </div>
+            }
+        </div>
+
+    </div>
+    } @else {
+    <div class="alert alert-info text-center p-5">
+        <h4 class="alert-heading">Tu carrito está vacío 😢</h4>
+        <p>Parece que aún no has añadido ningún producto. Explora nuestro catálogo y encuentra tu próxima joya musical.
+        </p>
+        <a [routerLink]="['/catalogo']" class="btn btn-primary mt-3">Ir al Catálogo</a>
+    </div>
+    }
+    }
+
+</div>

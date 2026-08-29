@@ -1,0 +1,69 @@
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+
+            <div class="card shadow-lg border-0">
+                <div class="card-body p-4 p-md-5">
+                    <h2 class="card-title text-center mb-4">Iniciar Sesión</h2>
+                    <hr>
+
+                    @if (errorMessage) {
+                    <div class="alert alert-danger" role="alert">
+                        {{ errorMessage }}
+                    </div>
+                    }
+
+                    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+
+                        <div class="mb-3">
+                            <label for="emailInput" class="form-label">Correo Electrónico</label>
+                            <input type="email" class="form-control" id="emailInput" formControlName="correoElectronico"
+                                placeholder="nombre@ejemplo.com"
+                                [ngClass]="{'is-invalid': email?.invalid && email?.touched}">
+                            @if (email?.errors && email?.touched) {
+                            <div class="invalid-feedback" style="display: block;">
+                                @if (email?.errors?.['required']) {
+                                <span>El correo es obligatorio.</span>
+                                }
+                                @if (email?.errors?.['email']) {
+                                <span>Debe ser un correo electrónico válido.</span>
+                                }
+                            </div>
+                            }
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="passwordInput" class="form-label">Contraseña</label>
+                            <input type="password" class="form-control" id="passwordInput" formControlName="password"
+                                [ngClass]="{'is-invalid': password?.invalid && password?.touched}">
+                            @if (password?.errors && password?.touched) {
+                            <div class="invalid-feedback" style="display: block;">
+                                @if (password?.errors?.['required']) {
+                                <span>La contraseña es obligatoria.</span>
+                                }
+                            </div>
+                            }
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg"
+                                [disabled]="loginForm.invalid || loading">
+                                @if (loading) {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"
+                                    aria-hidden="true"></span>
+                                }
+                                {{ loading ? 'Ingresando...' : 'Entrar' }}
+                            </button>
+                        </div>
+
+                        <p class="mt-4 text-center">
+                            ¿No tienes cuenta? <a [routerLink]="['/registro']">Regístrate aquí</a>
+                        </p>
+
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>

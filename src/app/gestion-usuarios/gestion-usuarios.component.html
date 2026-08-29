@@ -1,0 +1,128 @@
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Gestión de Usuarios</h1>
+    </div>
+    <hr>
+
+    @if (errorMessage) {
+    <div class="alert alert-danger">{{ errorMessage }}</div>
+    }
+    @if (successMessage) {
+    <div class="alert alert-success">{{ successMessage }}</div>
+    }
+
+    @if (loading) {
+    <div class="text-center p-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2">Cargando usuarios...</p>
+    </div>
+    } @else if (users.length === 0) {
+    <div class="alert alert-info text-center">No hay usuarios registrados.</div>
+    } @else {
+    <div class="table-responsive bg-white shadow-sm rounded">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th scope="col">ID</th>
+                    <th scope="col">Nombre Completo</th>
+                    <th scope="col">Contacto</th>
+                    <th scope="col">Rol</th>
+                    <th scope="col" class="text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (user of users; track user.idUsuario) {
+                <tr>
+                    <td><span class="badge bg-secondary">{{ user.idUsuario }}</span></td>
+                    <td>
+                        <div class="fw-bold">{{ user.nombre }} {{ user.apellidoP }}</div>
+                        <div class="small text-muted">{{ user.apellidoM }}</div>
+                    </td>
+                    <td>
+                        <div class="small">{{ user.correoElectronico }}</div>
+                        <div class="small text-muted">{{ user.telefono || 'N/A' }}</div>
+                    </td>
+                    <td>
+                        <span class="badge bg-info">
+                            {{ user.rol | uppercase }}
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-outline-info me-2" title="Editar"
+                            (click)="abrirModalEditar(user)">
+                            🖋️
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" title="Eliminar"
+                            (click)="eliminarUsuario(user.idUsuario, user.nombre)">
+                            🗑️
+                        </button>
+                    </td>
+                </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    }
+</div>
+
+<div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="userModalLabel">Editar Usuario: {{ currentUser?.nombre }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <form [formGroup]="userForm" (ngSubmit)="onSubmit()">
+                <div class="modal-body">
+                    @if (errorMessage && formSubmitting === false) {
+                    <div class="alert alert-danger">{{ errorMessage }}</div>
+                    }
+
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Nombre *</label>
+                            <input type="text" class="form-control" formControlName="nombre"
+                                [ngClass]="{'is-invalid': f['nombre'].invalid && f['nombre'].touched}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Apellido Paterno *</label>
+                            <input type="text" class="form-control" formControlName="apellidoP"
+                                [ngClass]="{'is-invalid': f['apellidoP'].invalid && f['apellidoP'].touched}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Apellido Materno</label>
+                            <input type="text" class="form-control" formControlName="apellidoM">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Correo Electrónico *</label>
+                            <input type="email" class="form-control" formControlName="correoElectronico"
+                                [ngClass]="{'is-invalid': f['correoElectronico'].invalid && f['correoElectronico'].touched}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Teléfono</label>
+                            <input type="text" class="form-control" formControlName="telefono">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Rol *</label>
+                            <select class="form-select" formControlName="rol"
+                                [ngClass]="{'is-invalid': f['rol'].invalid && f['rol'].touched}">
+                                <option value="cliente">Cliente</option>
+                                <option value="admin">Administrador</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" [disabled]="userForm.invalid || formSubmitting">
+                        @if (formSubmitting) {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

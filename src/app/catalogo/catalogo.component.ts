@@ -1,22 +1,27 @@
 // src/app/features/productos/catalogo/catalogo.component.ts
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Producto, ProductosService } from '../services/productos.service';
 import { CarritoService } from '../services/carrito.service';
 
 @Component({
   selector: 'app-catalogo',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './catalogo.component.html',
   styleUrls: ['./catalogo.component.css']
 })
 export class CatalogoComponent implements OnInit {
 
   productos: Producto[] = [];
+  productosFiltrados: Producto[] = [];
   loading: boolean = true;
   errorMessage: string | null = null;
   itemMessageMap: Map<number, string> = new Map();
+
+  // Búsqueda por nombre/artista/formato
+  searchTerm: string = '';
 
   constructor(
     private productosService: ProductosService,
@@ -36,10 +41,13 @@ export class CatalogoComponent implements OnInit {
 
     this.productosService.getProductos().subscribe({
       next: (data: any) => {
-        this.productos = data.map((p: any) => ({
-          ...p,
-          precio: Number(p.precio)
-        }));
+        this.productos = data
+          .map((p: any) => ({
+            ...p,
+            precio: Number(p.precio)
+          }))
+          .filter((p: Producto) => p.cantstock > 0);
+        this.productosFiltrados = this.productos;
         this.loading = false;
       },
       error: (err: any) => {
@@ -48,6 +56,33 @@ export class CatalogoComponent implements OnInit {
         console.error('Error al cargar productos:', err);
       }
     });
+  }
+
+  /**
+   * Se ejecuta cuando el usuario escribe en la barra de búsqueda.
+   * Filtra localmente por título, artista o formato.
+   */
+  onSearchChange(termino: string): void {
+    this.searchTerm = termino;
+    const terminoNormalizado = termino.trim().toLowerCase();
+
+    if (!terminoNormalizado) {
+      this.productosFiltrados = this.productos;
+      return;
+    }
+
+    this.productosFiltrados = this.productos.filter(producto =>
+      producto.titulo?.toLowerCase().includes(terminoNormalizado) ||
+      producto.artista?.toLowerCase().includes(terminoNormalizado) ||
+      producto.formato?.toLowerCase().includes(terminoNormalizado)
+    );
+  }
+
+  /**
+   * Limpia la barra de búsqueda.
+   */
+  limpiarBusqueda(): void {
+    this.onSearchChange('');
   }
 
   /**

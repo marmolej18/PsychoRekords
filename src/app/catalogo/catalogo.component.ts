@@ -41,10 +41,12 @@ export class CatalogoComponent implements OnInit {
 
     this.productosService.getProductos().subscribe({
       next: (data: any) => {
-        this.productos = data.map((p: any) => ({
-          ...p,
-          precio: Number(p.precio)
-        }));
+        this.productos = data
+          .map((p: any) => ({
+            ...p,
+            precio: Number(p.precio)
+          }))
+          .filter((p: Producto) => p.cantstock > 0);
         this.productosFiltrados = this.productos;
         this.loading = false;
       },

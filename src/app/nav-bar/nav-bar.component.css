@@ -1,6 +1,13 @@
 .custom-navbar {
-  background-color: #6ce963; 
-  padding: 10px;
+  background-color: var(--lightGr);
+}
+
+.logo{
+    transition: transform 0.3s ease;
+}
+
+.logo:hover{
+    transform: scale(1.1);
 }
 
 .links {
@@ -12,6 +19,7 @@
   margin: 0 !important;
   padding: 0 !important;
 }
+
 .links .nav-link {
   position: relative;
 }
@@ -27,7 +35,6 @@
   transition: width 0.2s ease;
 }
 
-
 @media (min-width: 992px) {
     .custom-toggler {
         display: none !important; 
@@ -40,18 +47,15 @@
     }
 }
 
-
 .custom-toggler:focus,
 .custom-toggler:active {
   outline: none !important;
   box-shadow: none !important;
 }
 
-
 .links .nav-link:hover::after {
   width: 100%;
 }
-
 
 .links .nav-link {
   text-decoration: none;
@@ -66,13 +70,10 @@
   transition: transform 0.3s ease, color 0.3s ease;
 }
 
-
-
 .nav-item {
   display: flex;
   align-items: center;
 }
-
 
 .custom-toggler {
   border: none;
@@ -92,6 +93,7 @@
   transition: 0.3s ease;
   border-radius: 2px;
 }
+
 .custom-toggler[aria-expanded="true"] .toggler-icon:nth-child(1) {
   transform: translateY(11px) rotate(45deg);
 }

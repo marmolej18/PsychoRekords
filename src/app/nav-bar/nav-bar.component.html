@@ -2,7 +2,7 @@
   <div class="container-fluid">
 
     <a class="navbar-brand d-flex align-items-center" [routerLink]="['/inicio']">
-      <img src="logo_trnsp.png" alt="Logo de la tienda" width="auto" height="60" class="me-2">
+      <img src="logo_rana.png" alt="Logo de la tienda" width="auto" height="75" class="logo">
     </a>
 
     <button class="navbar-toggler custom-toggler" type="button" data-bs-toggle="collapse"
@@ -33,22 +33,22 @@
             <div class="collapse navbar-collapse" id="navbarNav">
               <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 @if (isAdmin$ | async) {
-                <li class="nav-item dropdown">
-                  <a class="nav-link dropdown-toggle text-warning" href="#" id="adminDropdown" role="button"
-                    data-bs-toggle="dropdown" aria-expanded="false">
-                    Administración
-                  </a>
-                  <ul class="dropdown-menu" aria-labelledby="adminDropdown">
-                    <li><a class="dropdown-item" [routerLink]="['/admin/inventario']">Inventario</a></li>
+                    <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-warning" href="#" id="adminDropdown" role="button"
+                        data-bs-toggle="dropdown" aria-expanded="false">
+                        Administración
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="adminDropdown">
+                        <li><a class="dropdown-item" [routerLink]="['/admin/inventario']">Inventario</a></li>
 
-                    <li><a class="dropdown-item" [routerLink]="['/admin/reportes']">Reportes Financieros</a></li>
+                        <li><a class="dropdown-item" [routerLink]="['/admin/reportes']">Reportes Financieros</a></li>
 
-                    <li>
-                      <hr class="dropdown-divider">
+                        <li>
+                        <hr class="dropdown-divider">
+                        </li>
+                        <li><a class="dropdown-item" [routerLink]="['/admin/usuarios']">Gestión de Usuarios</a></li>
+                    </ul>
                     </li>
-                    <li><a class="dropdown-item" [routerLink]="['/admin/usuarios']">Gestión de Usuarios</a></li>
-                  </ul>
-                </li>
                 }
               </ul>
 
@@ -75,34 +75,34 @@
 
         <li class="nav-item dropdown">
           @if (isLoggedIn$ | async) {
-          <a class="nav-link" href="#" id="navbarDropdownProfile" role="button" data-bs-toggle="dropdown"
-            aria-expanded="false">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2a4 4 0 1 0 0 8a4 4 0 0 0 0-8z"></path>
-              <path d="M12 11c-2.7 0-6 1.2-6 3v2h12v-2c0-1.8-3.3-3-6-3z"></path>
-            </svg>
-            {{ (username$ | async)?.nombre }}
-          </a>
+            <a class="nav-link" href="#" id="navbarDropdownProfile" role="button" data-bs-toggle="dropdown"
+                aria-expanded="false">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2a4 4 0 1 0 0 8a4 4 0 0 0 0-8z"></path>
+                <path d="M12 11c-2.7 0-6 1.2-6 3v2h12v-2c0-1.8-3.3-3-6-3z"></path>
+                </svg>
+                {{ (username$ | async)?.nombre }}
+            </a>
 
-          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownProfile">
-            <li><a class="dropdown-item" [routerLink]="['/perfil']">Mi Perfil</a></li>
-            <li><a class="dropdown-item" [routerLink]="['/historial']">Mis Pedidos</a></li>
-            <li>
-              <hr class="dropdown-divider">
-            </li>
-            <li><a class="dropdown-item" (click)="logout()">Cerrar Sesión</a></li>
-          </ul>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownProfile">
+                <li><a class="dropdown-item" [routerLink]="['/perfil']">Mi Perfil</a></li>
+                <li><a class="dropdown-item" [routerLink]="['/historial']">Mis Pedidos</a></li>
+                <li>
+                <hr class="dropdown-divider">
+                </li>
+                <li><a class="dropdown-item" (click)="logout()">Cerrar Sesión</a></li>
+            </ul>
 
 
-          } @else {
-          <a [routerLink]="['/login']" class="nav-link" title="Iniciar sesión" aria-label="Iniciar sesión">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" />
-              <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
-            </svg>
-          </a>
+            } @else {
+            <a [routerLink]="['/login']" class="nav-link" title="Iniciar sesión" aria-label="Iniciar sesión">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" />
+                <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+                </svg>
+            </a>
           }
 
         </li>

@@ -1,6 +1,5 @@
-/* You can add global styles to this file, and also import other style files */
 :root {
-    --lightGr: #D2FF72;
+    --lightGr: #B9FF94;
     --green: #3cea5f;
     --darkGr: #15B392;
     --darkBl: #031A16;
@@ -14,43 +13,39 @@
     --verdeClaro2: #c3f5c0;
 }
 
-html {
-    font-size: 62.5%;
+* {
+    margin: 0;
+    padding: 0;
     box-sizing: border-box;
-    height: 100%;
-}
-
-*,
-*:before,
-*:after {
-    box-sizing: inherit;
 }
 
 h1 {
-    font-size: 4rem;
+    font-size: 2rem;
+    font-weight: bold;
 }
 
 h2 {
-    font-size: 3rem;
+    font-size: 1.5rem;
 }
 
 h3 {
-    font-size: 2rem;
+    font-size: 1rem;
 }
 
 h1,
 h2,
 h3 {
     text-align: center;
+    font-family: "Montserrat", sans-serif;
 }
 
 body {
     font-size: 16px;
-    font-family: "Barlow", sans-serif;
-
+    font-family: "Raleway", sans-serif;
 }
 
 /* UTILIDADES */
+
 
 /* LOGO Y BARRA DE BUSQUEDA */
 .cabecera {
@@ -148,87 +143,6 @@ body {
 .link a {
     text-decoration: none;
     color: inherit;
-}
-
-/* MAIN */
-.Imagen-Bienvenida {
-    background-image: url(../public/tornamesa-gif.gif);
-    height: 550px;
-    background-attachment: fixed;
-    /* Hace que la imagen se quede fija al hacer scroll */
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: cover;
-    position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.Contenido-Bienvenida h1 {
-    font-size: 7rem;
-    color: white;
-}
-
-.Contenido-Bienvenida p {
-    font-size: 3rem;
-    color: white;
-}
-
-.Contenido-Bienvenida {
-    padding: 2rem;
-    text-align: center;
-    position: relative;
-    z-index: 1;
-    /* Asegura que el contenido esté encima de la imagen */
-    color: var(--white);
-    font-size: 2.5rem;
-    font-weight: bold;
-}
-
-.Imagen-Bienvenida::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    /* Opcional: capa semitransparente */
-    z-index: 0;
-}
-
-.secciones-tienda {
-    padding: 2rem;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 2rem;
-}
-
-.secciones-tienda img {
-    display: block;
-    margin: 0 auto;
-    border-radius: 1rem;
-    width: 210px;
-    height: 220px;
-    transition: transform 0.6s ease;
-}
-
-.secciones-tienda img:hover {
-    transform: scale(1.1);
-
-}
-
-@media(min-width: 769px) {
-    .secciones-tienda {
-        grid-template-columns: repeat(2, 1fr);
-        /* Dos columnas en pantallas grandes */
-    }
-
-    .secciones-tienda img {
-        width: auto;
-        height: auto;
-    }
 }
 
 /* Area De Productos */

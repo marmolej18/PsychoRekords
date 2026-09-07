@@ -1,0 +1,53 @@
+.Imagen-Bienvenida {
+    background-image: url(../../../public/banner_inicio.jpg);
+    width: 100%;
+    min-height: 100vh;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-attachment: fixed;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    position: relative;
+}
+
+.Imagen-Bienvenida::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 0;
+}
+
+.Contenido-Bienvenida {
+    padding: 2rem;
+    text-align: center;
+    position: relative;
+    z-index: 2;
+    color: var(--white);
+}
+
+.Contenido-Bienvenida h1 {
+    font-size: 5rem;
+    font-weight: bold;
+}
+
+.Contenido-Bienvenida p {
+    font-size: 1.8rem;
+}
+
+@media screen and (max-width: 768px){
+    .Contenido-Bienvenida h1 {
+        font-size: 3rem;
+    }
+
+    .Contenido-Bienvenida p {
+        font-size: 1rem;
+    }
+}

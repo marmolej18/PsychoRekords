@@ -1,5 +1,5 @@
 <div class="container py-4">
-    <h1 class="mb-4">🎧 Nuestro Catálogo de Productos 💿</h1>
+    <h1 class="mb-4 title">Nuestro Catálogo de Productos</h1>
     <hr>
 
     @if (loading) {
@@ -29,7 +29,7 @@
                     <p class="card-text fw-bold fs-4 text-primary mt-auto">${{ producto.precio | number: '1.2-2' }}</p>
 
                     <div class="d-flex justify-content-between small mb-3">
-                        <span>Formato: **{{ producto.formato }}**</span>
+                        <span>Formato: {{ producto.formato }}</span>
                         @if (producto.cantstock > 0) {
                         <span class="badge bg-success">Stock: {{ producto.cantstock }}</span>
                         } @else {

@@ -62,14 +62,21 @@
                         <h5>2. Detalles de Pago</h5>
                     </div>
                     <div class="card-body">
-                        <p class="text-info">Pago simulado: En este proyecto, asumimos que el pago fue procesado
-                            exitosamente al presionar "Confirmar Compra".</p>
-                        <img src="tarjeta.png" height="100" width="180" alt="Simulación de Pago">
+                        @if (!pagoPaypalRealizado) {
+                        <p class="text-info">Paga con PayPal para continuar con tu compra.</p>
+                        <div id="paypal-button-container"></div>
+                        } @else {
+                        <div class="alert alert-success mb-0">
+                            Pago con PayPal aprobado. Gracias por tu compra.
+
+                        </div>
+                        }
                     </div>
                 </div>
 
                 <div class="d-grid gap-2 mt-4">
-                    <button type="submit" class="btn btn-success btn-lg" [disabled]="checkoutForm.invalid || loading">
+                    <button type="submit" class="btn btn-success btn-lg"
+                        [disabled]="checkoutForm.invalid || loading || !pagoPaypalRealizado">
                         @if (loading) {
                         <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                         }

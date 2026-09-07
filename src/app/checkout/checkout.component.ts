@@ -1,13 +1,15 @@
 // src/app/features/ventas/checkout/checkout.component.ts
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { CarritoService } from '../services/carrito.service';
 import { AuthService } from '../services/auth.service';
 import { VentasService, PuntoEntrega, DetalleVentaDTO, VentaDTO } from '../services/ventas.service';
-import { combineLatest, Observable } from 'rxjs';
+import { combineLatest, Observable, Subscription } from 'rxjs';
 import { map } from 'rxjs/operators';
+
+declare var paypal: any;
 
 @Component({
   selector: 'app-checkout',
@@ -16,7 +18,7 @@ import { map } from 'rxjs/operators';
   templateUrl: './checkout.component.html',
   styleUrls: ['./checkout.component.css']
 })
-export class CheckoutComponent implements OnInit {
+export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
 
   checkoutForm!: FormGroup;
   puntosEntrega$: Observable<PuntoEntrega[]> = new Observable();
@@ -28,6 +30,12 @@ export class CheckoutComponent implements OnInit {
   purchaseComplete: boolean = false;
   ventaExitosaData: any = null;
   errorMessage: string | null = null;
+
+  // --- Estado de PayPal ---
+  pagoPaypalRealizado: boolean = false;
+  detallesPaypal: any = null;
+  private paypalButtonRenderizado: boolean = false;
+  private resumenSub?: Subscription;
 
   constructor(
     private fb: FormBuilder,
@@ -73,6 +81,47 @@ export class CheckoutComponent implements OnInit {
       );
   }
 
+  ngAfterViewInit(): void {
+    // Esperamos a tener el total real del resumen para renderizar el botón de PayPal
+    this.resumenSub = this.resumenVenta$.subscribe(resumen => {
+      if (resumen && !this.paypalButtonRenderizado && resumen.total > 0) {
+        this.renderPaypalButton(resumen.total);
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.resumenSub?.unsubscribe();
+  }
+
+  private renderPaypalButton(total: number): void {
+    // Guard: si el SDK de PayPal no está cargado (ej. en pruebas unitarias), no truena.
+    if (typeof paypal === 'undefined') {
+      return;
+    }
+
+    this.paypalButtonRenderizado = true;
+
+    paypal.Buttons({
+      createOrder: (data: any, actions: any) => {
+        return actions.order.create({
+          purchase_units: [{ amount: { value: total.toFixed(2) } }]
+        });
+      },
+      onApprove: async (data: any, actions: any) => {
+        const details = await actions.order.capture();
+        this.detallesPaypal = details;
+        this.pagoPaypalRealizado = true;
+      },
+      onError: (err: any) => {
+        this.errorMessage = 'Hubo un problema al procesar el pago con PayPal. Intenta de nuevo.';
+        console.error('Error de PayPal:', err);
+      }
+    }).render('#paypal-button-container');
+  }
+
+  
+
   /**
    * Procesa la compra final (Llama a la API transaccional de Node.js).
    */
@@ -82,6 +131,11 @@ export class CheckoutComponent implements OnInit {
     if (this.checkoutForm.invalid) {
       this.checkoutForm.markAllAsTouched();
       this.errorMessage = 'Por favor, selecciona un Punto de Entrega.';
+      return;
+    }
+
+    if (!this.pagoPaypalRealizado) {
+      this.errorMessage = 'Debes completar el pago con PayPal antes de confirmar la compra.';
       return;
     }
 
@@ -127,6 +181,9 @@ export class CheckoutComponent implements OnInit {
     });
   }
 
+  
+
   // Getters para fácil acceso al formulario
   get f() { return this.checkoutForm.controls; }
 }
+

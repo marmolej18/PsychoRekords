@@ -1,7 +1,28 @@
 <div class="container py-4">
     <h1 class="mb-4 title">Nuestro Catálogo de Productos</h1>
     <hr>
+    <div class="row mb-4">
+        <div class="col-12 col-md-8 col-lg-6 mx-auto">
+            <div class="input-group">
+                <span class="input-group-text bg-white border-end-0">
+                    <i class="bi bi-search text-muted"></i>
+                </span>
+                <input
+                    type="text"
+                    class="form-control border-start-0 ps-0"
+                    placeholder="Buscar por título, artista o formato..."
+                    [ngModel]="searchTerm"
+                    (ngModelChange)="onSearchChange($event)"
+                    name="busquedaCatalogo">
 
+                @if (searchTerm) {
+                <button class="btn btn-outline-secondary" type="button" (click)="limpiarBusqueda()" title="Limpiar búsqueda">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+                }
+            </div>
+        </div>
+    </div>
     @if (loading) {
     <div class="text-center p-5">
         <div class="spinner-border text-primary" role="status">
@@ -16,7 +37,7 @@
     } @else {
     <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
 
-        @for (producto of productos; track producto.idprod) {
+        @for (producto of productosFiltrados; track producto.idprod) {
         <div class="col">
             <div class="card h-100 shadow-sm border-0">
 

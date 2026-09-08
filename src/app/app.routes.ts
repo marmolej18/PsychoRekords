@@ -11,6 +11,7 @@ import { HistorialComponent } from './historial/historial.component';
 import { InventarioComponent } from './inventario/inventario.component';
 import { ReportesComponent } from './reportes/reportes.component';
 import { GestionUsuariosComponent } from './gestion-usuarios/gestion-usuarios.component';
+import { DetallesComponent } from './detalles/detalles.component';
 
 export const routes: Routes = [
     { path: 'inicio', component: InicioComponent },
@@ -19,6 +20,7 @@ export const routes: Routes = [
     { path: 'login', component: LoginComponent },
     { path: 'registro', component: RegistroUsuarioComponent },
     { path: 'catalogo', component: CatalogoComponent },
+    { path: 'detalles/:id', component: DetallesComponent},
     { path: 'carrito', component: CarritoComponent },
     { path: 'checkout', component: CheckoutComponent },
     { path: 'historial', component: HistorialComponent },

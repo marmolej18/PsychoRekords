@@ -1,0 +1,23 @@
+.detallesLayout{
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+
+}
+
+.detallesInfo > h1 {
+    text-align: left;
+}
+
+.detallesInfo > h2 {
+    text-align: left;
+}
+
+.detallesInfo{
+    text-align: left;
+}
+
+.imgDetalles{
+    width: 50%;
+    height: auto;
+}

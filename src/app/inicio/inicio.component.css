@@ -51,3 +51,23 @@
         font-size: 1rem;
     }
 }
+
+.opcInicio{
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+}
+
+.opcInicio > button{
+    border: none;
+    padding: 10px;
+    border-radius: 50px;
+    background-color: var(--lightGr);
+    z-index: 3;
+    font-weight: bold;
+    transition: transform 0.3s ease;
+}
+
+.opcInicio > button:hover{
+    transform: scale(1.1);
+}

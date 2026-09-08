@@ -1,8 +1,22 @@
-<div>
-    <div class="img-producto">
+@if (producto) {
+    <div class="detallesLayout">
+        <img [src]="'/' + producto.titulo + '.jpg'" (error)="onImageError($event)" [alt]="producto.titulo" class="imgDetalles">
 
+        <div class="detallesInfo">
+            <h1>{{ producto.titulo }}</h1>
+            <h2>{{ producto.artista }}</h2>
+
+            <p>Género: {{ producto.generomus }}</p>
+            <p>Año: {{ producto.aniolanzam }}</p>
+            <p>Formato: {{ producto.formato }}</p>
+            <p>Condición: {{ producto.condiciones }}</p>
+            <p>Stock: {{ producto.cantstock }}</p>
+            <p>Precio: ${{ producto.precio }}</p>
+        </div>
     </div>
-    <div class="detalles">
-        
+}
+@else {
+    <div class="alert alert-warning" role="alert">
+        Error al recuperar la información del producto.
     </div>
-</div>
+}

@@ -1,6 +1,6 @@
-// src/app/features/productos/catalogo/catalogo.component.ts
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Producto, ProductosService } from '../services/productos.service';
 import { CarritoService } from '../services/carrito.service';
@@ -8,7 +8,7 @@ import { CarritoService } from '../services/carrito.service';
 @Component({
   selector: 'app-catalogo',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './catalogo.component.html',
   styleUrls: ['./catalogo.component.css']
 })
@@ -135,7 +135,7 @@ export class CatalogoComponent implements OnInit {
    */
   onImageError(event: Event): void {
     const img = event.target as HTMLImageElement;
-    img.src = 'logo.png';
+    img.src = '/logo_rana.png';
     // Prevenir bucle infinito si el logo también falla
     img.onerror = null;
   }

@@ -38,39 +38,39 @@
     <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
 
         @for (producto of productosFiltrados; track producto.idprod) {
-        <div class="col">
-            <div class="card h-100 shadow-sm border-0">
-
-                <img [src]="producto.titulo + '.jpg'" (error)="onImageError($event)" class="card-img-top"
-                    alt="Portada de {{producto.titulo}}">
-
-                <div class="card-body d-flex flex-column">
-                    <h5 class="card-title text-truncate" title="{{producto.titulo}}">{{ producto.titulo }}</h5>
-                    <p class="card-text text-muted small mb-1">{{ producto.artista }} ({{ producto.aniolanzam }})</p>
-                    <p class="card-text fw-bold fs-4 text-primary mt-auto">${{ producto.precio | number: '1.2-2' }}</p>
-
-                    <div class="d-flex justify-content-between small mb-3">
-                        <span>Formato: {{ producto.formato }}</span>
-                        @if (producto.cantstock > 0) {
-                        <span class="badge bg-success">Stock: {{ producto.cantstock }}</span>
-                        } @else {
-                        <span class="badge bg-danger">¡Agotado!</span>
-                        }
-                    </div>
-
-                    @if (getItemMessage(producto.idprod)) {
-                    <div class="alert {{ getAlertClass(producto.idprod) }} text-center py-1 mt-2" role="alert">
-                        {{ getItemMessage(producto.idprod) }}
-                    </div>
-                    } @else {
-                    <button (click)="agregarAlCarrito(producto)" class="btn btn-outline-primary w-100"
-                        [disabled]="producto.cantstock <= 0">
-                        <i class="bi bi-cart-plus me-1"></i>
-                        {{ producto.cantstock <= 0 ? 'Sin Stock' : 'Añadir al Carrito' }} </button>
+            <div class="col">
+                    <div class="card h-100 shadow-sm">
+                        <a [routerLink]="['/detalles', producto.idprod]" routerLinkActive="active">
+                            <img [src]="'/' + producto.titulo + '.jpg'" (error)="onImageError($event)" class="card-img-top producto" alt="Portada de {{producto.titulo}}">
+                        </a>
+        
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title text-truncate" title="{{producto.titulo}}">{{ producto.titulo }}</h5>
+                            <p class="card-text text-muted small mb-1">{{ producto.artista }} ({{ producto.aniolanzam }})</p>
+                            <p class="card-text fw-bold fs-4 text-primary mt-auto">${{ producto.precio | number: '1.2-2' }}</p>
+        
+                            <div class="d-flex justify-content-between small mb-3">
+                                <span>Formato: {{ producto.formato }}</span>
+                                @if (producto.cantstock > 0) {
+                                <span class="badge bg-success">Stock: {{ producto.cantstock }}</span>
+                                } @else {
+                                <span class="badge bg-danger">¡Agotado!</span>
+                                }
+                            </div>
+        
+                            @if (getItemMessage(producto.idprod)) {
+                            <div class="alert {{ getAlertClass(producto.idprod) }} text-center py-1 mt-2" role="alert">
+                                {{ getItemMessage(producto.idprod) }}
+                            </div>
+                            } @else {
+                            <button (click)="agregarAlCarrito(producto)" class="btn btn-outline-primary w-100"
+                                [disabled]="producto.cantstock <= 0">
+                                <i class="bi bi-cart-plus me-1"></i>
+                                {{ producto.cantstock <= 0 ? 'Sin Stock' : 'Añadir al Carrito' }} </button>
                             }
-                </div>
+                        </div>
+                    </div>
             </div>
-        </div>
         }
         @empty {
         <div class="alert alert-warning text-center w-100" role="alert">No se encontraron productos que coincidan.</div>

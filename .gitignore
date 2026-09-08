@@ -1,14 +1,14 @@
-# See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
-
 # Compiled output
 /dist
 /tmp
 /out-tsc
 /bazel-out
 
+# Variables de entorno
+.env
+
 # Node
-/node_modules
-/Backend Psycho/node_modules
+node_modules/
 npm-debug.log
 yarn-error.log
 

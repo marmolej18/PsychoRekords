@@ -1,16 +1,16 @@
 const { Pool } = require('pg');
-
+require('dotenv').config();
 
 // Configuración del pool de conexión
 const pool = new Pool({
-    user: 'postgres',        //Usuario
-    host: 'localhost',
-    database: 'PsychoRekords', //Nombre de la base
-    //password: 'chrisbd1',  //Contraseña
-    port: 5432,
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASSWORD,
+    port: process.env.DB_PORT,
 });
 
-// Prueba de conexión (opcional)
+// Prueba de conexión 
 pool.on('connect', () => {
     console.log('Cliente conectado a PostgreSQL.');
 });

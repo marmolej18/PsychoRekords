@@ -13,6 +13,10 @@ import { CarritoService } from '../services/carrito.service';
   styleUrls: ['./nav-bar.component.css']
 })
 export class NavBarComponent implements OnInit {
+  menuAbierto = false;
+
+  cerrarMenu(): void { this.menuAbierto = false; }
+
   // Observables para el estado
   isLoggedIn$: Observable<boolean>;
   isAdmin$: Observable<boolean>;

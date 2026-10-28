@@ -1,115 +1,56 @@
-<nav class="navbar navbar-expand-lg navbar-dark custom-navbar sticky-top">
-  <div class="container-fluid">
-
-    <a class="navbar-brand d-flex align-items-center" [routerLink]="['/inicio']">
-      <img src="logo_rana.png" alt="Logo de la tienda" width="auto" height="75" class="logo">
+<nav class="store-nav" aria-label="Navegación principal">
+  <div class="nav-shell">
+    <a class="brand" routerLink="/inicio" (click)="cerrarMenu()" aria-label="PsychoRekords, inicio">
+      <img src="logo_rana.png" alt="" width="52" height="52">
+      <span>Psycho<span class="brand-accent">Rekords</span></span>
     </a>
-
-    <button class="navbar-toggler custom-toggler" type="button" data-bs-toggle="collapse"
-      data-bs-target="#mainNavbarContent" aria-controls="mainNavbarContent" aria-expanded="false"
-      aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
+    <button class="menu-toggle" type="button" (click)="menuAbierto = !menuAbierto"
+      [attr.aria-expanded]="menuAbierto" aria-controls="store-menu" [attr.aria-label]="menuAbierto ? 'Cerrar menú' : 'Abrir menú'">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
     </button>
-
-    <div class="collapse navbar-collapse" id="mainNavbarContent">
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0 links">
-
-        <li class="nav-item">
-          <a class="nav-link" [routerLink]="['/inicio']" routerLinkActive="active"
-            [routerLinkActiveOptions]="{exact: true}">Inicio</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" [routerLink]="['/catalogo']" routerLinkActive="active">Catálogo</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" [routerLink]="['/nosotros']" routerLinkActive="active">Nosotros</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" [routerLink]="['/qya']" routerLinkActive="active">FAQ</a>
-        </li>
-
-        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-          <div class="container-fluid">
-            <div class="collapse navbar-collapse" id="navbarNav">
-              <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                @if (isAdmin$ | async) {
-                    <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle text-warning" href="#" id="adminDropdown" role="button"
-                        data-bs-toggle="dropdown" aria-expanded="false">
-                        Administración
-                    </a>
-                    <ul class="dropdown-menu" aria-labelledby="adminDropdown">
-                        <li><a class="dropdown-item" [routerLink]="['/admin/inventario']">Inventario</a></li>
-
-                        <li><a class="dropdown-item" [routerLink]="['/admin/ventas']">Historial de Ventas</a></li>
-                        <li><a class="dropdown-item" [routerLink]="['/admin/reportes']">Reportes Financieros</a></li>
-
-                        <li>
-                        <hr class="dropdown-divider">
-                        </li>
-                        <li><a class="dropdown-item" [routerLink]="['/admin/usuarios']">Gestión de Usuarios</a></li>
-                    </ul>
-                    </li>
-                }
-              </ul>
-
-            </div>
-          </div>
-        </nav>
-
-        <li class="nav-item">
-          <a [routerLink]="['/carrito']" class="nav-link position-relative" title="Ver Carrito">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="9" cy="21" r="1"></circle>
-              <circle cx="20" cy="21" r="1"></circle>
-              <path d="M1 1h4l2.68 12.08a2 2 0 0 0 2 1.92h9.72a2 2 0 0 0 2-1.92L23 6H6"></path>
-            </svg>
-            @if (cartItemCount$ | async; as count) {
-            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-              style="font-size: 0.6em;">
-              {{ count }}
-            </span>
-            }
+    <div id="store-menu" class="menu-content" [class.is-open]="menuAbierto">
+      <ul class="main-links">
+        <li><a routerLink="/inicio" routerLinkActive="active" ariaCurrentWhenActive="page" (click)="cerrarMenu()">Inicio</a></li>
+        <li><a routerLink="/catalogo" routerLinkActive="active" ariaCurrentWhenActive="page" (click)="cerrarMenu()">Catálogo</a></li>
+        <li><a routerLink="/nosotros" routerLinkActive="active" ariaCurrentWhenActive="page" (click)="cerrarMenu()">Nosotros</a></li>
+        <li><a routerLink="/qya" routerLinkActive="active" ariaCurrentWhenActive="page" (click)="cerrarMenu()">FAQ</a></li>
+      </ul>
+      <ul class="account-links">
+        @if (isAdmin$ | async) {
+          <li class="dropdown">
+            <button class="admin-button dropdown-toggle" type="button" id="adminDropdown" data-bs-toggle="dropdown" aria-expanded="false">Administración</button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="adminDropdown">
+              <li><a class="dropdown-item" routerLink="/admin/inventario" (click)="cerrarMenu()">Inventario</a></li>
+              <li><a class="dropdown-item" routerLink="/admin/ventas" (click)="cerrarMenu()">Historial de ventas</a></li>
+              <li><a class="dropdown-item" routerLink="/admin/reportes" (click)="cerrarMenu()">Reportes financieros</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" routerLink="/admin/usuarios" (click)="cerrarMenu()">Gestión de usuarios</a></li>
+            </ul>
+          </li>
+        }
+        <li>
+          <a routerLink="/carrito" class="cart-button" (click)="cerrarMenu()" aria-label="Ver carrito">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 12.08a2 2 0 0 0 2 1.92h9.72a2 2 0 0 0 2-1.92L23 6H6"/></svg>
+            @if (cartItemCount$ | async; as count) { <span class="cart-count">{{ count }}</span> }
           </a>
         </li>
-
-        <li class="nav-item dropdown">
+        <li class="dropdown profile">
           @if (isLoggedIn$ | async) {
-            <a class="nav-link" href="#" id="navbarDropdownProfile" role="button" data-bs-toggle="dropdown"
-                aria-expanded="false">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2a4 4 0 1 0 0 8a4 4 0 0 0 0-8z"></path>
-                <path d="M12 11c-2.7 0-6 1.2-6 3v2h12v-2c0-1.8-3.3-3-6-3z"></path>
-                </svg>
-                {{ (username$ | async)?.nombre }}
-            </a>
-
-            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownProfile">
-                <li><a class="dropdown-item" [routerLink]="['/perfil']">Mi Perfil</a></li>
-                <li><a class="dropdown-item" [routerLink]="['/historial']">Mis Pedidos</a></li>
-                <li>
-                <hr class="dropdown-divider">
-                </li>
-                <li><a class="dropdown-item" (click)="logout()">Cerrar Sesión</a></li>
+            <button class="profile-button dropdown-toggle" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 22v-2a8 8 0 0 1 16 0v2"/></svg>
+              <span class="username">{{ (username$ | async)?.nombre }}</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
+              <li><a class="dropdown-item" routerLink="/perfil" (click)="cerrarMenu()">Mi perfil</a></li>
+              <li><a class="dropdown-item" routerLink="/historial" (click)="cerrarMenu()">Mis pedidos</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><button class="dropdown-item" type="button" (click)="logout(); cerrarMenu()">Cerrar sesión</button></li>
             </ul>
-
-
-            } @else {
-            <a [routerLink]="['/login']" class="nav-link" title="Iniciar sesión" aria-label="Iniciar sesión">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" />
-                <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
-                </svg>
-            </a>
+          } @else {
+            <a class="login-button" routerLink="/login" (click)="cerrarMenu()">Iniciar sesión</a>
           }
-
         </li>
-
       </ul>
-
     </div>
   </div>
 </nav>

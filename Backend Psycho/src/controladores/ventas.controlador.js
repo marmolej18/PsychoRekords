@@ -191,48 +191,55 @@ const cancelarVenta = async (req, res) => {
 
 
 
+const consultaVentas = `
+    SELECT v.idventa, v.fecha, v.totalventa, v.estadopedido,
+           concat_ws(' ', u.nombre, u.apellidop, u.apellidom) AS cliente,
+           u.correoelectronico AS correo, pe.nombrepunto,
+           pe.direccioncompleta
+    FROM venta v
+    LEFT JOIN usuario u ON u.idusuario = v.idusuario
+    LEFT JOIN puntoentrega pe ON pe.idpunto = v.idpunto`;
+
 const getTodasLasVentas = async (req, res) => {
-    // Nota: El middleware verificarAdmin ya protege esta ruta.
-
-    // Consulta simple a la VISTA sin filtro por usuario
-    const queryText = `
-        SELECT 
-            "idventa", 
-            "fecha", 
-            "totalventa", 
-            "estadopedido",
-            "nombrepunto", 
-            "direccioncompleta", 
-            detalles 
-        FROM vw_historial_ventas 
-        ORDER BY "fecha" DESC;
-    `;
-
     try {
-        const result = await db.query(queryText);
-
-        const ventas = result.rows.map(venta => ({
-            idventa: venta.idventa,
-            fecha: venta.fecha,
-            totalventa: Number(venta.totalventa),
-            estadopedido: venta.estadopedido,
-            nombrepunto: venta.nombrepunto,
-            direccionCompleta: venta.direccioncompleta,
-            detalles: venta.detalles
-            // Podrías añadir V.idusuario si lo necesitas en el frontend
-        }));
-
-        res.status(200).json(ventas);
+        const result = await db.query(`SELECT v.*,
+            COALESCE((SELECT json_agg(json_build_object(
+                'iddetalle', dv.iddetalle, 'titulo', p.titulo, 'artista', p.artista,
+                'cantidad', dv.cantidad, 'precioUnitario', dv.preciounitario) ORDER BY dv.iddetalle)
+                FROM detalleventa dv LEFT JOIN producto p ON p.idprod = dv.idprod
+                WHERE dv.idventa = v.idventa AND dv.cantidad > 0), '[]'::json) AS detalles
+            FROM (${consultaVentas}) v ORDER BY v.fecha DESC, v.idventa DESC`);
+        res.json(result.rows.map(venta => ({ ...venta, totalventa: Number(venta.totalventa) })));
     } catch (error) {
-        console.error('Error al obtener todas las ventas:', error);
-        res.status(500).json({ message: 'Error interno del servidor al consultar todas las ventas.' });
+        console.error('Error al consultar ventas:', error);
+        res.status(500).json({ message: 'No se pudieron consultar las ventas.' });
     }
 };
 
-
-module.exports = {
-    crearVenta,
-    getVentasByUsuario,
-    cancelarVenta,
-    getTodasLasVentas
+const getDetalleVenta = async (req, res) => {
+    const idventa = Number(req.params.idventa);
+    if (!Number.isSafeInteger(idventa) || idventa <= 0) {
+        return res.status(400).json({ message: 'El número de venta no es válido.' });
+    }
+    try {
+        const result = await db.query(consultaVentas + ' WHERE v.idventa = $1', [idventa]);
+        if (!result.rows.length) {
+            return res.status(404).json({ message: 'La venta no existe.' });
+        }
+        // Las cantidades negativas corresponden a ajustes de cancelación, no al pedido original.
+        const detalles = await db.query(`
+            SELECT dv.iddetalle, p.titulo, p.artista, dv.cantidad,
+                   dv.preciounitario AS "precioUnitario"
+            FROM detalleventa dv
+            LEFT JOIN producto p ON p.idprod = dv.idprod
+            WHERE dv.idventa = $1 AND dv.cantidad > 0
+            ORDER BY dv.iddetalle`, [idventa]);
+        res.json({ ...result.rows[0], totalventa: Number(result.rows[0].totalventa),
+            detalles: detalles.rows.map(d => ({ ...d, precioUnitario: Number(d.precioUnitario) })) });
+    } catch (error) {
+        console.error('Error al consultar el detalle de venta:', error);
+        res.status(500).json({ message: 'No se pudo consultar el detalle de la venta.' });
+    }
 };
+
+module.exports = { crearVenta, getVentasByUsuario, cancelarVenta, getTodasLasVentas, getDetalleVenta };

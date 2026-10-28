@@ -37,6 +37,9 @@ export interface DetalleVenta {
 
 // Interface para una venta individual
 export interface Venta {
+  cliente?: string;
+  correo?: string;
+  direccioncompleta?: string;
   idventa: number;
   fecha: string; // String de fecha ISO
   totalventa: number;
@@ -94,6 +97,10 @@ export class VentasService {
     const historialUrl = `${this.apiUrl}/usuario/${idUsuario}`;
     // Asumimos que el AuthInterceptor añade el token
     return this.http.get<Venta[]>(historialUrl);
+  }
+
+  getDetalleVenta(idventa: number): Observable<Venta> {
+    return this.http.get<Venta>(`${this.apiUrl}/detalle/${idventa}`, { headers: this.getAdminHeaders() });
   }
 
   getTodasLasVentas(): Observable<Venta[]> {

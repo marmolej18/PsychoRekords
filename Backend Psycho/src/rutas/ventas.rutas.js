@@ -7,4 +7,5 @@ router.post('/', ventasController.crearVenta);
 router.get('/usuario/:idUsuario', ventasController.getVentasByUsuario);
 router.put('/cancelar/:idventa', verificarAdmin, ventasController.cancelarVenta); // Nuevo
 router.get('/todas', verificarAdmin, ventasController.getTodasLasVentas); // Nuevo
+router.get('/detalle/:idventa', verificarAdmin, ventasController.getDetalleVenta);
 module.exports = router;

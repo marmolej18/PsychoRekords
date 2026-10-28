@@ -1,0 +1,60 @@
+<section class="container py-4">
+  <h1>Historial de ventas</h1>
+  <p class="text-center text-muted mb-4">Cada pedido tiene su historia. Consulta aquí sus detalles.</p>
+  @if (cargando) {
+    <p role="status" class="text-center p-4">Cargando ventas...</p>
+  } @else if (error) {
+    <div role="alert" class="alert alert-danger">{{ error }} <button class="btn btn-outline-dark btn-sm" (click)="cargarVentas()">Reintentar</button></div>
+  } @else if (!ventas.length) {
+    <div class="alert alert-info text-center">Todavía no hay ventas registradas.</div>
+  } @else {
+    <div class="table-responsive border rounded">
+      <table class="table table-hover align-middle mb-0">
+        <caption class="px-3">{{ ventas.length }} ventas registradas. Las más recientes aparecen primero.</caption>
+        <thead><tr><th scope="col">Venta</th><th scope="col">Fecha</th><th scope="col">Cliente</th><th scope="col">Estado</th><th scope="col">Total</th><th scope="col">Detalle</th></tr></thead>
+        <tbody>
+          @for (venta of ventas; track venta.idventa) {
+            <tr [class.table-active]="seleccionada?.idventa === venta.idventa">
+              <th scope="row">#{{ venta.idventa }}</th>
+              <td>{{ venta.fecha | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td>{{ venta.cliente || 'Sin información' }}</td>
+              <td><span [class]="estadoClase(venta.estadopedido)">{{ venta.estadopedido || 'Sin estado' }}</span></td>
+              <td class="text-nowrap">{{ venta.totalventa | currency:'MXN':'$' }}</td>
+              <td><button class="btn btn-detalle btn-sm" (click)="verDetalle(venta.idventa)" [attr.aria-label]="'Ver detalle de la venta ' + venta.idventa">Ver detalle</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+  <div aria-live="polite">
+    @if (cargandoDetalle) { <p role="status" class="mt-4">Cargando detalle...</p> }
+    @if (errorDetalle) { <p role="alert" class="alert alert-danger mt-4">{{ errorDetalle }}</p> }
+    @if (seleccionada; as venta) {
+      <article class="card mt-4 shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h2 class="mb-0">Venta #{{ venta.idventa }}</h2>
+          <button class="btn btn-outline-dark btn-sm" (click)="cerrarDetalle()">Cerrar detalle</button>
+        </div>
+        <div class="card-body">
+          <div class="row mb-3">
+            <div class="col-md-6"><h3>Datos del pedido</h3><p>{{ venta.fecha | date:'dd/MM/yyyy HH:mm' }}</p><p>{{ venta.cliente }}</p><p>{{ venta.correo }}</p><span [class]="estadoClase(venta.estadopedido)">{{ venta.estadopedido }}</span></div>
+            <div class="col-md-6"><h3>Punto de entrega</h3><p class="fw-bold">{{ venta.nombrepunto }}</p><p>{{ venta.direccioncompleta }}</p></div>
+          </div>
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <caption>Productos del pedido original</caption>
+              <thead><tr><th scope="col">Producto</th><th scope="col">Cantidad</th><th scope="col">Precio unitario</th><th scope="col">Subtotal</th></tr></thead>
+              <tbody>
+                @for (detalle of venta.detalles; track detalle.iddetalle) {
+                  <tr><td><strong>{{ detalle.titulo }}</strong><br>{{ detalle.artista }}</td><td>{{ detalle.cantidad }}</td><td>{{ detalle.precioUnitario | currency:'MXN':'$' }}</td><td>{{ detalle.cantidad * detalle.precioUnitario | currency:'MXN':'$' }}</td></tr>
+                } @empty { <tr><td colspan="4">No hay productos registrados para esta venta.</td></tr> }
+              </tbody>
+            </table>
+          </div>
+          <p class="text-end fs-5 fw-bold mb-0">Total de la venta: {{ venta.totalventa | currency:'MXN':'$' }}</p>
+        </div>
+      </article>
+    }
+  </div>
+</section>

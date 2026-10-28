@@ -1,0 +1,7 @@
+h1, h2, h3 { color: var(--darkBl); }
+h3 { text-align: left; font-weight: 600; }
+thead th, .card-header { background-color: var(--verdeClaro2); color: var(--darkBl); }
+.btn-detalle { background-color: var(--green); color: var(--darkBl); border: 1px solid var(--darkGr); }
+.btn-detalle:hover, .btn-detalle:focus-visible { background-color: var(--darkGr); color: var(--white); }
+.card-body p { margin-bottom: .5rem; }
+th, td { padding: .85rem; }

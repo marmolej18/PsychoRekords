@@ -1,43 +1,80 @@
+const jwt = require('jsonwebtoken');
 const db = require('../db');
 
 /**
- * Middleware para verificar si el usuario es un administrador.
- * Requiere que el ID del usuario se envíe en la cabecera 'x-user-id'.
+ * 1. Middleware de Autenticación General:
+ * Valida el JWT y verifica que no esté revocado en la lista negra (logout).
  */
-const verificarAdmin = async (req, res, next) => {
-    // 1. Obtener el ID del usuario de la cabecera 
-    const idUsuario = req.headers['x-user-id'];
+const verificarToken = async (req, res, next) => {
+    const authHeader = req.headers['authorization'];
 
-    if (!idUsuario) {
-        return res.status(401).json({ message: 'Acceso denegado. Se requiere autenticación.' });
+    // Validar que el header exista y tenga el prefijo 'Bearer '
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ 
+            message: 'Acceso denegado: Token no proporcionado o formato inválido.' 
+        });
     }
 
-    // 2. Consultar el rol del usuario
-    const queryText = 'SELECT "rol" FROM "usuario" WHERE "idusuario" = $1';
+    const token = authHeader.split(' ')[1];
 
     try {
-        const result = await db.query(queryText, [idUsuario]);
+        // A. Verificar si el token fue invalidado en un logout previo
+        const blockResult = await db.query(
+            'SELECT 1 FROM token_blocklist WHERE token = $1',
+            [token]
+        );
 
-        if (result.rows.length === 0) {
-            return res.status(404).json({ message: 'Usuario no encontrado.' });
+        if (blockResult.rowCount > 0) {
+            return res.status(401).json({ 
+                message: 'Token inválido o sesión cerrada previamente.' 
+            });
         }
 
-        const rol = result.rows[0].rol;
+        // B. Verificar firma y vigencia del token
+        const decoded = jwt.verify(
+            token, 
+            process.env.JWT_SECRET || 'secreto_super_seguro_psychorekords'
+        );
 
-        // 3. Verificar si tiene el rol de administrador
-        if (rol !== 'admin') {
-            return res.status(403).json({ message: 'Acceso prohibido. Requiere permisos de administrador.' });
-        }
-
-        // 4. Si es admin, permitir que continúe
+        // Inyectamos el usuario decodificado en la request
+        // (contiene idUsuario, correoElectronico, rol)
+        req.usuario = decoded;
         next();
 
     } catch (error) {
-        console.error('Error en middleware de verificación de admin:', error);
-        res.status(500).json({ message: 'Error interno del servidor.' });
+        if (error.name === 'TokenExpiredError') {
+            return res.status(401).json({ 
+                message: 'El token ha expirado. Inicia sesión nuevamente.' 
+            });
+        }
+        return res.status(403).json({ message: 'Token no válido o alterado.' });
     }
 };
 
+/**
+ * 2. Middleware de Autorización por Rol:
+ * Se ejecuta SIEMPRE DESPUÉS de verificarToken. No necesita hacer consultas a BD
+ * porque el rol ya viene garantizado por la firma del JWT.
+ */
+const verificarAdmin = (req, res, next) => {
+    // Si verificarToken no se ejecutó antes o no hay usuario
+    if (!req.usuario) {
+        return res.status(401).json({ 
+            message: 'Acceso denegado. Se requiere autenticación previa.' 
+        });
+    }
+
+    // Comprobamos el rol que viene dentro del token
+    if (req.usuario.rol !== 'admin') {
+        return res.status(403).json({ 
+            message: 'Acceso prohibido. Requiere permisos de administrador.' 
+        });
+    }
+
+    next();
+};
+
 module.exports = {
+    verificarToken,
     verificarAdmin,
 };

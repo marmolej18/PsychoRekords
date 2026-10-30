@@ -1,5 +1,6 @@
-// src/controllers/usuarios.controller.js
+// src/controladores/usuarios.controlador.js
 const db = require('../db');
+const jwt = require('jsonwebtoken');
 
 /**
  * POST /api/usuarios/registro - Registrar un nuevo Usuario
@@ -7,14 +8,13 @@ const db = require('../db');
 const registrarUsuario = async (req, res) => {
     const { nombre, apellidoP, apellidoM, correoElectronico, password, telefono, CP, calle, colonia, numCasa, ciudad, estado } = req.body;
 
-    // Consulta SQL para insertar el nuevo usuario
     const queryText = `
         INSERT INTO "usuario" (
             "nombre", "apellidop", "apellidom", "correoelectronico", "password", "telefono", 
             "cp", "calle", "colonia", "numcasa", "ciudad", "estado"
         ) 
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-        RETURNING "idusuario", "correoelectronico"`; // Devolver el ID generado
+        RETURNING "idusuario", "correoelectronico"`;
 
     const values = [nombre, apellidoP, apellidoM, correoElectronico, password, telefono, CP, calle, colonia, numCasa, ciudad, estado];
 
@@ -38,7 +38,6 @@ const registrarUsuario = async (req, res) => {
         });
     } catch (error) {
         console.error('Error al registrar usuario:', error);
-        // Manejo específico para violación de UNIQUE (correoElectronico)
         if (error.code === '23505') {
             return res.status(409).json({ message: 'El correo electrónico ya está registrado.' });
         }
@@ -60,7 +59,6 @@ const getUsuarioById = async (req, res) => {
             return res.status(404).json({ message: 'Usuario no encontrado.' });
         }
 
-        // Evita enviar campos sensibles si los tuvieras (ej: contraseña, aunque aquí no está)
         res.status(200).json(result.rows[0]);
     } catch (error) {
         console.error(`Error al obtener usuario ${idUsuario}:`, error);
@@ -69,8 +67,7 @@ const getUsuarioById = async (req, res) => {
 };
 
 /**
- * POST /api/usuarios/login - Autenticar al usuario
- * Body esperado: { "correoElectronico": "...", "password": "..." }
+ * POST /api/usuarios/login - Autenticar al usuario y generar JWT
  */
 const loginUsuario = async (req, res) => {
     const { correoElectronico, password } = req.body;
@@ -79,7 +76,6 @@ const loginUsuario = async (req, res) => {
         return res.status(400).json({ message: 'El correo electrónico y la contraseña son obligatorios.' });
     }
 
-    // Consulta para buscar el usuario por correo y verificar la contraseña
     const queryText = `
         SELECT "idusuario", "nombre", "apellidop", "apellidom", "correoelectronico", "rol"
         FROM "usuario"
@@ -90,19 +86,32 @@ const loginUsuario = async (req, res) => {
         const result = await db.query(queryText, [correoElectronico, password]);
 
         if (result.rows.length === 0) {
-            // Credenciales inválidas
             return res.status(401).json({ message: 'Correo o contraseña incorrectos.' });
         }
 
         const usuario = result.rows[0];
 
-        // Autenticación exitosa
+        // Crear payload del token
+        const payload = {
+            idUsuario: usuario.idusuario,
+            correoElectronico: usuario.correoelectronico,
+            rol: usuario.rol
+        };
+
+        // Generar JWT firmado por 8 horas
+        const token = jwt.sign(
+            payload,
+            process.env.JWT_SECRET || 'secreto_super_seguro_psychorekords',
+            { expiresIn: '8h' }
+        );
+
         res.status(200).json({
             message: 'Autenticación exitosa.',
+            token,
             usuario: {
                 idUsuario: usuario.idusuario,
                 nombre: usuario.nombre,
-                correoElectronico: usuario.correoElectronico,
+                correoElectronico: usuario.correoelectronico,
                 rol: usuario.rol
             }
         });
@@ -110,6 +119,37 @@ const loginUsuario = async (req, res) => {
     } catch (error) {
         console.error('Error durante el login:', error);
         res.status(500).json({ message: 'Error interno del servidor durante la autenticación.' });
+    }
+};
+
+/**
+ * POST /api/usuarios/logout - Invalida el JWT actual registrándolo en la blocklist
+ */
+const logoutUsuario = async (req, res) => {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(400).json({ message: 'Token no proporcionado.' });
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    try {
+        const decoded = jwt.decode(token);
+        const expiresAt = decoded && decoded.exp 
+            ? new Date(decoded.exp * 1000) 
+            : new Date(Date.now() + 8 * 60 * 60 * 1000);
+
+        // Limpiar tokens expirados y guardar en la tabla de revocados
+        await db.query('DELETE FROM token_blocklist WHERE expires_at < NOW()');
+        await db.query(
+            'INSERT INTO token_blocklist (token, expires_at) VALUES ($1, $2) ON CONFLICT (token) DO NOTHING',
+            [token, expiresAt]
+        );
+
+        res.status(200).json({ message: 'Sesión cerrada exitosamente.' });
+    } catch (error) {
+        console.error('Error al cerrar sesión:', error);
+        res.status(500).json({ message: 'Error interno al procesar el cierre de sesión.' });
     }
 };
 
@@ -127,7 +167,7 @@ const getAllUsers = async (req, res) => {
                 "usuario"
             ORDER BY "idusuario" DESC
         `);
-        // Adaptamos los nombres de columna a CamelCase en la respuesta para el frontend
+
         const users = result.rows.map(row => ({
             idUsuario: row.idusuario,
             nombre: row.nombre,
@@ -155,7 +195,6 @@ const getAllUsers = async (req, res) => {
  */
 const updateUser = async (req, res) => {
     const { id } = req.params;
-    // El rol se incluirá aquí para que el Admin pueda cambiarlo.
     const {
         nombre, apellidoP, apellidoM, correoElectronico,
         telefono, rol, CP, calle, colonia, numCasa, ciudad, estado
@@ -178,12 +217,12 @@ const updateUser = async (req, res) => {
                 "apellidom" = $3, 
                 "correoelectronico" = $4, 
                 telefono = $5, 
-                rol = $6,
-                "cp" = $7,
-                calle = $8,
-                colonia = $9,
-                "numcasa" = $10,
-                ciudad = $11,
+                rol = $6, 
+                "cp" = $7, 
+                calle = $8, 
+                colonia = $9, 
+                "numcasa" = $10, 
+                ciudad = $11, 
                 estado = $12
             WHERE 
                 "idusuario" = $13
@@ -231,11 +270,11 @@ const deleteUser = async (req, res) => {
     }
 };
 
-
 module.exports = {
     registrarUsuario,
     getUsuarioById,
     loginUsuario,
+    logoutUsuario,
     getAllUsers,
     updateUser,
     deleteUser

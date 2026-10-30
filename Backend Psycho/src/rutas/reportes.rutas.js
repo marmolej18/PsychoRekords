@@ -2,13 +2,13 @@
 const express = require('express');
 const router = express.Router();
 const reportesController = require('../controladores/reportes.controlador');
-const { verificarAdmin } = require('../middlewares/auth.middleware'); // Proteger todas las rutas
+const { verificarToken, verificarAdmin } = require('../middlewares/auth.middleware'); // Proteger todas las rutas
 
 // Todas las rutas requieren verificación de administrador
-router.get('/rentables', verificarAdmin, reportesController.getReporteRentables);
-router.get('/ventas-formato', verificarAdmin, reportesController.getReporteVentasFormato);
+router.get('/rentables', verificarToken, verificarAdmin, reportesController.getReporteRentables);
+router.get('/ventas-formato', verificarToken, verificarAdmin, reportesController.getReporteVentasFormato);
 // Nueva ruta para el Trigger de anulación
-router.get('/movimiento-inventario', verificarAdmin, reportesController.getMovimientoInventario);
-router.get('/stock-trazabilidad/:idProd', verificarAdmin, reportesController.getTrazabilidadStock);
+router.get('/movimiento-inventario', verificarToken, verificarAdmin, reportesController.getMovimientoInventario);
+router.get('/stock-trazabilidad/:idProd', verificarToken, verificarAdmin, reportesController.getTrazabilidadStock);
 
 module.exports = router;

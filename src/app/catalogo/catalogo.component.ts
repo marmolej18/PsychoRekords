@@ -16,12 +16,12 @@ export class CatalogoComponent implements OnInit {
 
   productos: Producto[] = [];
   productosFiltrados: Producto[] = [];
-  loading: boolean = true;
+  loading = true;
   errorMessage: string | null = null;
-  itemMessageMap: Map<number, string> = new Map();
+  itemMessageMap = new Map<number, string>();
 
   // Búsqueda por nombre/artista/formato
-  searchTerm: string = '';
+  searchTerm = '';
 
   constructor(
     private productosService: ProductosService,

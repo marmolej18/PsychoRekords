@@ -16,15 +16,15 @@ export class ReportesComponent implements OnInit {
   reporteRentables: any[] = [];
   reporteVentasFormato: any[] = [];
 
-  loadingRentables: boolean = true;
-  loadingFormato: boolean = true;
+  loadingRentables = true;
+  loadingFormato = true;
 
   errorMessage: string | null = null;
   movimientoInventarioData: any[] = [];
 
   trazabilidadStockData: any[] = [];
   selectedProdId: number | null = null;
-  loadingTrazabilidad: boolean = false;
+  loadingTrazabilidad = false;
 
   view: [number, number] = [700, 400];
   legend = false;

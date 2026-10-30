@@ -14,7 +14,7 @@ import { AuthService } from '../services/auth.service';
 export class LoginComponent implements OnInit {
   loginForm!: FormGroup;
   errorMessage: string | null = null;
-  loading: boolean = false;
+  loading = false;
 
   constructor(
     private fb: FormBuilder,

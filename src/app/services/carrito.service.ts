@@ -71,7 +71,7 @@ export class CarritoService {
   /**
    * Añade un producto al carrito o incrementa su cantidad.
    */
-  agregarProducto(producto: Producto, cantidad: number = 1): void {
+  agregarProducto(producto: Producto, cantidad = 1): void {
     const items = this.itemsSubject.getValue();
     const existingItem = items.find(item => item.producto.idprod === producto.idprod);
 

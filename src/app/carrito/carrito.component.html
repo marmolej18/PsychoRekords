@@ -22,8 +22,10 @@
                     <div class="row align-items-center py-3 border-bottom item-row">
 
                         <div class="col-12 col-sm-5 d-flex align-items-center">
-                            <img src="{{ item.producto.titulo + '.jpg' }}" height="50" width="50"
-                                (error)="onImageError($event)" class="me-3 rounded">
+                            <img [src]="item.producto.titulo + '.jpg'"
+                                 [alt]="'Portada de ' + item.producto.titulo" 
+                                 height="50" width="50"
+                                 (error)="onImageError($event)" class="me-3 rounded">
                             <div>
                                 <h6 class="mb-0">{{ item.producto.titulo }}</h6>
                                 <p class="text-muted small mb-0">{{ item.producto.artista }}</p>

@@ -6,7 +6,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 
-declare var bootstrap: any; // Para usar el modal de Bootstrap
+declare let bootstrap: any; // Para usar el modal de Bootstrap
 
 @Component({
   selector: 'app-gestion-usuarios',
@@ -18,14 +18,14 @@ declare var bootstrap: any; // Para usar el modal de Bootstrap
 export class GestionUsuariosComponent implements OnInit {
 
   users: UserAdmin[] = [];
-  loading: boolean = true;
+  loading = true;
   errorMessage: string | null = null;
   successMessage: string | null = null;
 
   // Propiedades del formulario modal
   userForm!: FormGroup;
   currentUser: UserAdmin | null = null;
-  formSubmitting: boolean = false;
+  formSubmitting = false;
 
   constructor(
     private authService: AuthService,

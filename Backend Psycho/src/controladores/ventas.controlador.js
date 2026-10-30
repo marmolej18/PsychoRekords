@@ -155,7 +155,7 @@ const cancelarVenta = async (req, res) => {
     try {
         // 1. Lectura del parámetro (usando el nombre minúsculas de la ruta)
         idVentaStr = req.params.idventa;
-        const idAdmin = req.header('x-user-id');
+        const idAdmin = req.usuario?.idUsuario || req.header('x-user-id');
 
         // 2. Validación y Conversión (Previene el error de tipo integer)
         if (!idVentaStr || isNaN(Number(idVentaStr))) {

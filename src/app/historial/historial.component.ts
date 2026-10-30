@@ -17,7 +17,7 @@ import { Observable } from 'rxjs';
 export class HistorialComponent implements OnInit {
 
   historialVentas: Venta[] = [];
-  loading: boolean = true;
+  loading = true;
   errorMessage: string | null = null;
   idUsuario: number | null = null;
   successMessage: string | null = null; // Nuevo para mensajes de éxito
@@ -132,7 +132,7 @@ export class HistorialComponent implements OnInit {
     
     // NOTA: Usamos .subscribe para manejar la llamada al PUT/cancelar
     this.ventasService.cancelarVenta(idventa).subscribe({
-      next: (response) => {
+      next: (_response) => {
         this.successMessage = `¡Orden #${idventa} cancelada con éxito! El inventario ha sido revertido.`;
         this.cargarTodasLasVentas(); // Recargar la lista para ver el estado actualizado
         setTimeout(() => this.successMessage = null, 5000);

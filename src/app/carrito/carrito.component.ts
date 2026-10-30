@@ -19,8 +19,8 @@ interface CarritoItem {
 })
 export class CarritoComponent implements OnInit {
 
-  carritoItems$: Observable<CarritoItem[]> = new Observable();
-  subtotal$: Observable<number> = new Observable();
+  carritoItems$ = new Observable<CarritoItem[]>();
+  subtotal$ = new Observable<number>();
 
   IVA_PORCENTAJE = 0.16; // 16% de IVA
   COSTO_ENVIO = 80.00;   // Costo fijo de envío

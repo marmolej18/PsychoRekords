@@ -32,7 +32,7 @@
                             @for (punto of puntos; track punto.idpunto) {
                             <div class="col-md-6">
                                 <div class="card h-100 p-3"
-                                    [ngClass]="{'border-primary shadow-sm': f['idpunto'].value == punto.idpunto}">
+                                    [ngClass]="{'border-primary shadow-sm': f['idpunto'].value === punto.idpunto}">
                                     <div class="form-check">
                                         <input class="form-check-input" type="radio" name="idpunto"
                                             [id]="'punto'+punto.idpunto" [value]="punto.idpunto"

@@ -9,7 +9,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 // Declarar 'window' para poder usar el modal de Bootstrap
-declare var bootstrap: any;
+declare let bootstrap: any;
 
 @Component({
   selector: 'app-inventario',
@@ -20,16 +20,16 @@ declare var bootstrap: any;
 export class InventarioComponent implements OnInit {
 
   productos: Producto[] = [];
-  loading: boolean = true;
+  loading = true;
   errorMessage: string | null = null;
   successMessage: string | null = null;
 
   // Propiedades para el formulario modal
   productoForm!: FormGroup;
-  isEditMode: boolean = false;
+  isEditMode = false;
   currentProductId: number | null = null;
-  formSubmitting: boolean = false;
-  modalTitle: string = '';
+  formSubmitting = false;
+  modalTitle = '';
 
   // Opciones para los selectores
   formatos = ['Vinilo', 'CD', 'Cassette'];

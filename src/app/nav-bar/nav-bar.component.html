@@ -36,6 +36,7 @@
         </li>
         <li class="dropdown profile">
           @if (isLoggedIn$ | async) {
+<<<<<<< HEAD
             <button class="profile-button dropdown-toggle" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 22v-2a8 8 0 0 1 16 0v2"/></svg>
               <span class="username">{{ (username$ | async)?.nombre }}</span>
@@ -45,6 +46,25 @@
               <li><a class="dropdown-item" routerLink="/historial" (click)="cerrarMenu()">Mis pedidos</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><button class="dropdown-item" type="button" (click)="logout(); cerrarMenu()">Cerrar sesión</button></li>
+=======
+            <a class="nav-link" href="#" id="navbarDropdownProfile" role="button" data-bs-toggle="dropdown"
+                aria-expanded="false">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2a4 4 0 1 0 0 8a4 4 0 0 0 0-8z"></path>
+                <path d="M12 11c-2.7 0-6 1.2-6 3v2h12v-2c0-1.8-3.3-3-6-3z"></path>
+                </svg>
+                {{ (username$ | async)?.nombre }}
+            </a>
+
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownProfile">
+                <li><a class="dropdown-item" [routerLink]="['/perfil']">Mi Perfil</a></li>
+                <li><a class="dropdown-item" [routerLink]="['/historial']">Mis Pedidos</a></li>
+                <li>
+                <hr class="dropdown-divider">
+                </li>
+                <li><button class="dropdown-item" (click)="logout()">Cerrar Sesión</button></li>
+>>>>>>> camiBranch
             </ul>
           } @else {
             <a class="login-button" routerLink="/login" (click)="cerrarMenu()">Iniciar sesión</a>

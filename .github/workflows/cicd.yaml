@@ -1,0 +1,97 @@
+name: CI/CD PsychoRekords
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      # 1) Descarga del código fuente (5%)
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      # 2) Entorno y dependencias (5%)
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # 3) Linting (15%)
+      - name: Análisis estático (ESLint)
+        run: npm run lint
+
+      # 4) Pruebas unitarias (15%)
+      - name: Pruebas unitarias
+        run: npm run test:unit
+
+      # 5) Pruebas de integración (20%)
+      - name: Pruebas de integración
+        run: npm run test:integration
+
+      # Compilación del proyecto
+      - name: Compilar proyecto
+        run: npm run build -- --configuration production
+
+      # 6a) Vulnerabilidades en dependencias (15%)
+      - name: Auditoría de dependencias
+        run: npm audit --omit=dev --audit-level=high
+
+  # 6b) Vulnerabilidades en código, SAST (15%)
+  codeql:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+      - uses: github/codeql-action/analyze@v3
+
+  # 7) Empaquetado en contenedor Docker (25%)
+  docker-publish:
+    needs: [build-and-test, codeql]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Iniciar sesión en GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Metadatos de la imagen
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest
+            type=sha
+
+      - name: Construir y publicar imagen
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

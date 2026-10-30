@@ -9,7 +9,7 @@ import { VentasService, PuntoEntrega, DetalleVentaDTO, VentaDTO } from '../servi
 import { combineLatest, Observable, Subscription } from 'rxjs';
 import { map } from 'rxjs/operators';
 
-declare var paypal: any;
+declare let paypal: any;
 
 @Component({
   selector: 'app-checkout',
@@ -21,20 +21,20 @@ declare var paypal: any;
 export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
 
   checkoutForm!: FormGroup;
-  puntosEntrega$: Observable<PuntoEntrega[]> = new Observable();
+  puntosEntrega$ = new Observable<PuntoEntrega[]>();
 
   // Data del resumen (combinada)
-  resumenVenta$: Observable<any> = new Observable();
+  resumenVenta$ = new Observable<any>();
 
-  loading: boolean = false;
-  purchaseComplete: boolean = false;
+  loading = false;
+  purchaseComplete = false;
   ventaExitosaData: any = null;
   errorMessage: string | null = null;
 
   // --- Estado de PayPal ---
-  pagoPaypalRealizado: boolean = false;
+  pagoPaypalRealizado = false;
   detallesPaypal: any = null;
-  private paypalButtonRenderizado: boolean = false;
+  private paypalButtonRenderizado = false;
   private resumenSub?: Subscription;
 
   constructor(

@@ -22,7 +22,7 @@ export class DetallesComponent implements OnInit{
             next:(producto: Producto) => {
                 this.producto=producto;
             },
-            error: (error) => {
+            error: (_error) => {
                 console.log('Error al obtener el producto');
             }
         });

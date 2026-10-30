@@ -15,7 +15,7 @@ export class RegistroUsuarioComponent implements OnInit {
   registroForm!: FormGroup;
   errorMessage: string | null = null;
   successMessage: string | null = null;
-  loading: boolean = false;
+  loading = false;
   private apiUrl = `http://localhost:3000/api/usuarios/registro`;
 
   constructor(

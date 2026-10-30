@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { CarritoComponent } from './carrito.component';
+import { TEST_PROVIDERS } from '../testing/test-providers';
 
 describe('CarritoComponent', () => {
   let component: CarritoComponent;
@@ -8,7 +9,8 @@ describe('CarritoComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [CarritoComponent]
+      imports: [CarritoComponent],
+      providers: [...TEST_PROVIDERS]
     })
     .compileComponents();
 

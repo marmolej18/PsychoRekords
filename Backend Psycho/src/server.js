@@ -4,16 +4,20 @@ const cors = require('cors');
 const app = express();
 const PORT = 3000;
 
+// Configuración de CORS permitiendo Authorization
+app.use(cors({
+    origin: 'http://localhost:4200',
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+app.use(express.json());
+
 // Importar rutas
 const productosRouter = require('./rutas/productos.rutas');
 const ventasRouter = require('./rutas/ventas.rutas');
 const usuariosRouter = require('./rutas/usuarios.rutas');
 const puntosRouter = require('./rutas/puntosEntrega.rutas');
 const reportesRouter = require('./rutas/reportes.rutas');
-
-// Middlewares
-app.use(cors());
-app.use(express.json());
 
 // RUTAS PRINCIPALES
 app.use('/api/productos', productosRouter);

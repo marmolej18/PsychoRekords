@@ -65,6 +65,12 @@ CREATE TABLE DetalleVenta (
     CONSTRAINT fk_detalle_producto FOREIGN KEY (idProd) REFERENCES Producto(idProd)
 );
 
+CREATE TABLE token_blocklist (----//para cierre de sesion seguro------
+    token TEXT PRIMARY KEY,
+    expires_at TIMESTAMP NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_token_blocklist_expires ON token_blocklist(expires_at);
+
 -- --- DATOS DE EJEMPLO (OPCIONALES PARA PROBAR) ---
 
 -- Insertar un Punto de Entrega
@@ -407,3 +413,5 @@ BEGIN
     RETURN TRUE;
 END;
 $$ LANGUAGE plpgsql;
+
+

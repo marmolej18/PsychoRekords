@@ -2,7 +2,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { AuthService } from './auth.service';
 
 // Interfaz para el Punto de Entrega
 export interface PuntoEntrega {
@@ -55,18 +54,12 @@ export class VentasService {
   private apiUrl = `http://localhost:3000/api/ventas`;
   private puntosUrl = `http://localhost:3000/api/puntos-entrega`;
 
-  constructor(
-    private http: HttpClient,
-    private authService: AuthService
-  ) { }
-
+  constructor(private http: HttpClient) { }
 
   private getAdminHeaders(): HttpHeaders {
-        const userId = this.authService.getAuthHeader();
-        return new HttpHeaders({
-            'Content-Type': 'application/json',
-            'x-user-id': userId || '' // ¡Asegura que el valor se obtiene!
-        });
+    return new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
   }
 
   /**
@@ -85,17 +78,15 @@ export class VentasService {
     const headers = new HttpHeaders({
       'Content-Type': 'application/json',
     });
-    // La lógica de Admin no aplica aquí, solo el contenido del body
     return this.http.post<any>(this.apiUrl, ventaData, { headers });
   }
 
   /**
-   * GET /api/ventas/historial/:idUsuario
+   * GET /api/ventas/usuario/:idUsuario
    * Obtiene el historial de ventas del usuario logueado.
    */
   getHistorialVentas(idUsuario: number): Observable<Venta[]> {
     const historialUrl = `${this.apiUrl}/usuario/${idUsuario}`;
-    // Asumimos que el AuthInterceptor añade el token
     return this.http.get<Venta[]>(historialUrl);
   }
 
@@ -104,17 +95,16 @@ export class VentasService {
   }
 
   getTodasLasVentas(): Observable<Venta[]> {
-        const headers = this.getAdminHeaders();
-        return this.http.get<Venta[]>(`${this.apiUrl}/todas`, { headers });
+    const headers = this.getAdminHeaders();
+    return this.http.get<Venta[]>(`${this.apiUrl}/todas`, { headers });
   }
 
-    /**
-     * PUT /api/ventas/cancelar/:idVenta - Llama al procedimiento almacenado de Node.js.
-     */
+  /**
+   * PUT /api/ventas/cancelar/:idVenta - Llama al procedimiento almacenado de Node.js.
+   */
   cancelarVenta(idventa: number): Observable<any> {
-        console.log(idventa);
-        const headers = this.getAdminHeaders();
-        const url = `${this.apiUrl}/cancelar/${idventa}`;
-        return this.http.put(url, {}, { headers });
+    const headers = this.getAdminHeaders();
+    const url = `${this.apiUrl}/cancelar/${idventa}`;
+    return this.http.put(url, {}, { headers });
   }
 }

@@ -2,7 +2,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { AuthService } from './auth.service'; // Necesario para obtener el ID de Admin
 
 // Interfaz que mapea la estructura de la tabla Producto
 export interface Producto {
@@ -30,10 +29,7 @@ interface ProductoResponse {
 export class ProductosService {
   private apiUrl = `http://localhost:3000/api/productos`;
 
-  constructor(
-    private http: HttpClient,
-    private authService: AuthService // Inyectamos el AuthService para las peticiones de Admin
-  ) { }
+  constructor(private http: HttpClient) { }
 
   // --- MÉTODOS PÚBLICOS (Catálogo) ---
 
@@ -56,15 +52,11 @@ export class ProductosService {
   // --- MÉTODOS DE ADMINISTRACIÓN (Inventario) ---
 
   /**
-   * Configura las cabeceras necesarias para las peticiones de administrador.
-   * La API de Node.js espera 'x-user-id'.
+   * Configura las cabeceras estándar JSON (el token Bearer lo añade authInterceptor).
    */
   private getAdminHeaders(): HttpHeaders {
-    const userId = this.authService.getAuthHeader();
     return new HttpHeaders({
-      'Content-Type': 'application/json',
-      // Simulación de autenticación de administrador con el ID del usuario logueado
-      'x-user-id': userId || ''
+      'Content-Type': 'application/json'
     });
   }
 

@@ -1,6 +1,5 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { AuthService } from './auth.service';
 import { Observable } from 'rxjs';
 
 @Injectable({
@@ -9,11 +8,7 @@ import { Observable } from 'rxjs';
 export class ReportesService {
   private baseUrl = 'http://localhost:3000/api/reportes';
 
-  constructor(
-    private http: HttpClient,
-    private authService: AuthService
-  ) { }
-
+  constructor(private http: HttpClient) { }
 
   getTrazabilidadStock(idProd: number): Observable<any[]> {
     const headers = this.getAdminHeaders();
@@ -21,14 +16,11 @@ export class ReportesService {
   }
 
   /**
-   * Configura las cabeceras necesarias para las peticiones de administrador.
-   * Obtiene el ID del usuario logueado.
+   * Configura las cabeceras estándar JSON (el token Bearer lo añade authInterceptor).
    */
   private getAdminHeaders(): HttpHeaders {
-    const userId = this.authService.getAuthHeader();
     return new HttpHeaders({
-      'Content-Type': 'application/json',
-      'x-user-id': userId || ''
+      'Content-Type': 'application/json'
     });
   }
 
@@ -48,5 +40,3 @@ export class ReportesService {
     return this.http.get<any[]>(`${this.baseUrl}/ventas-formato`, { headers });
   }
 }
-
-

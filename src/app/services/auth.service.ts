@@ -1,7 +1,8 @@
 // src/app/core/auth/auth.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { BehaviorSubject, Observable, tap } from 'rxjs'; // Asume que tienes un archivo de entorno
+import { Router } from '@angular/router';
+import { BehaviorSubject, Observable, finalize, tap } from 'rxjs';
 
 // Interface para el objeto de usuario (coincide con la respuesta de tu API)
 export interface UserAuth {
@@ -43,17 +44,27 @@ export class AuthService {
   private isAdminSubject = new BehaviorSubject<boolean>(false);
   isAdmin$ = this.isAdminSubject.asObservable();
 
-  constructor(private http: HttpClient) {
+  constructor(
+    private http: HttpClient,
+    private router: Router
+  ) {
     // Cargar el estado al iniciar el servicio (ej: al refrescar la página)
     this.loadUserFromStorage();
   }
 
-  /** Carga la sesión desde el almacenamiento local si existe. */
+  /** Carga la sesión desde el almacenamiento local si existe junto con su JWT. */
   private loadUserFromStorage(): void {
     const userJson = localStorage.getItem('currentUser');
-    if (userJson) {
-      const user: UserAuth = JSON.parse(userJson);
-      this.setUserState(user);
+    const token = localStorage.getItem('auth_token');
+    if (userJson && token) {
+      try {
+        const user: UserAuth = JSON.parse(userJson);
+        this.setUserState(user);
+      } catch {
+        this.clearSession();
+      }
+    } else if (userJson && !token) {
+      this.clearSession();
     }
   }
 
@@ -61,27 +72,23 @@ export class AuthService {
   private setUserState(user: UserAuth | null): void {
     this.userSubject.next(user);
     this.loggedInSubject.next(!!user);
-    this.isAdminSubject.next(user?.rol === 'admin' ? true : false);
+    this.isAdminSubject.next(user?.rol === 'admin');
   }
 
   /**
-   * Envía las credenciales al backend para autenticación.
+   * Envía las credenciales al backend para autenticación y almacena el JWT.
    */
   login(correoElectronico: string, password: string): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/login`, { correoElectronico, password }).pipe(
       tap(response => {
-        // La respuesta de tu API contiene: { message, usuario: { idUsuario, nombre, correoElectronico } }
-
-        // IMPORTANTE: Tienes que asegurarte de que tu API devuelva el ROL también en la respuesta del login.
-        // Si no lo hace, necesitarías hacer una petición adicional a /api/usuarios/:id o modificar el backend.
-        // ASUMO que la API devuelve { idUsuario, nombre, correoElectronico, rol }
-
         const user: UserAuth = {
           ...response.usuario,
-          rol: response.usuario.rol || 'cliente' // Por defecto, es 'cliente'
+          rol: response.usuario.rol || 'cliente'
         };
 
-        // Guardar la sesión en localStorage y actualizar el estado
+        if (response.token) {
+          localStorage.setItem('auth_token', response.token);
+        }
         localStorage.setItem('currentUser', JSON.stringify(user));
         this.setUserState(user);
       })
@@ -89,22 +96,54 @@ export class AuthService {
   }
 
   /**
-   * Cierra la sesión, limpia el almacenamiento y el estado.
+   * Limpia únicamente los datos de sesión ('auth_token' y 'currentUser'),
+   * manteniendo intacto el carrito de compras en localStorage.
    */
-  logout(): void {
+  clearSession(): void {
+    localStorage.removeItem('auth_token');
     localStorage.removeItem('currentUser');
     this.setUserState(null);
-    // Redireccionar al inicio o login
-    // this.router.navigate(['/login']); 
   }
 
   /**
-   * Obtiene el token de autorización (simulado con el ID del usuario)
-   * Útil para añadir la cabecera 'x-user-id' a peticiones de Admin/Perfil/Historial.
+   * Cierra la sesión de forma segura: revoca el JWT en el backend (token_blocklist),
+   * limpia la sesión local sin vaciar el carrito y redirige a /login.
+   */
+  logout(): void {
+    const token = localStorage.getItem('auth_token');
+
+    if (token) {
+      const headers = new HttpHeaders({
+        Authorization: `Bearer ${token}`
+      });
+
+      this.http.post(`${this.apiUrl}/logout`, {}, { headers }).pipe(
+        finalize(() => {
+          this.clearSession();
+          this.router.navigate(['/login']);
+        })
+      ).subscribe({
+        error: (err) => console.error('Error al cerrar sesión en el servidor:', err)
+      });
+    } else {
+      this.clearSession();
+      this.router.navigate(['/login']);
+    }
+  }
+
+  /**
+   * Obtiene el ID del usuario autenticado actualmente.
    */
   getAuthHeader(): string | null {
     const user = this.userSubject.getValue();
     return user ? String(user.idUsuario) : null;
+  }
+
+  /**
+   * Obtiene el token JWT almacenado.
+   */
+  getToken(): string | null {
+    return localStorage.getItem('auth_token');
   }
 
   /**
@@ -113,12 +152,11 @@ export class AuthService {
    */
   getAllUsers(): Observable<UserAdmin[]> {
     const headers = this.getAdminHeaders();
-    // El Interceptor añadirá el 'x-user-id' del administrador logueado
     return this.http.get<UserAdmin[]>(`${this.apiUrl}`, { headers });
   }
 
   /**
-   * Obtiene un usuario por ID (Solo Admin).
+   * Obtiene un usuario por ID (Admin/Propio).
    * GET /api/usuarios/:id
    */
   getUserById(id: number): Observable<UserAdmin> {
@@ -131,7 +169,6 @@ export class AuthService {
    * PUT /api/usuarios/:id
    */
   updateUser(id: number, userData: Partial<UserAdmin>): Observable<any> {
-    // El Interceptor añadirá el 'x-user-id' del administrador
     const headers = this.getAdminHeaders();
     return this.http.put<any>(`${this.apiUrl}/${id}`, userData, { headers });
   }
@@ -141,21 +178,16 @@ export class AuthService {
    * DELETE /api/usuarios/:id
    */
   deleteUser(id: number): Observable<any> {
-    // Nota: Dependiendo de tu lógica de negocio, esto podría ser una eliminación suave (soft delete).
     const headers = this.getAdminHeaders();
     return this.http.delete<any>(`${this.apiUrl}/${id}`, { headers });
   }
 
   /**
- * Configura las cabeceras necesarias para las peticiones de administrador.
- * La API de Node.js espera 'x-user-id'.
- */
+   * Configura las cabeceras estándar JSON (el token Bearer lo inyecta authInterceptor).
+   */
   private getAdminHeaders(): HttpHeaders {
-    const userId = this.getAuthHeader();
     return new HttpHeaders({
-      'Content-Type': 'application/json',
-      // Simulación de autenticación de administrador con el ID del usuario logueado
-      'x-user-id': userId || ''
+      'Content-Type': 'application/json'
     });
   }
 }

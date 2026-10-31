@@ -1,26 +1,92 @@
 <div class="container py-4">
     <h1 class="mb-4 title">Nuestro Catálogo de Productos</h1>
     <hr>
-    <div class="row mb-4">
-        <div class="col-12 col-md-8 col-lg-6 mx-auto">
+    <div class="row g-3 mb-4 align-items-end">
+        <div class="col-12 col-md-6 col-lg-4">
+            <label class="form-label small text-muted mb-1" for="busquedaCatalogo">Buscar</label>
             <div class="input-group">
                 <span class="input-group-text bg-white border-end-0">
                     <i class="bi bi-search text-muted"></i>
                 </span>
                 <input
+                    id="busquedaCatalogo"
                     type="text"
                     class="form-control border-start-0 ps-0"
-                    placeholder="Buscar por título, artista o formato..."
+                    placeholder="Título, artista o género..."
                     [ngModel]="searchTerm"
                     (ngModelChange)="onSearchChange($event)"
                     name="busquedaCatalogo">
-
-                @if (searchTerm) {
-                <button class="btn btn-outline-secondary" type="button" (click)="limpiarBusqueda()" title="Limpiar búsqueda">
-                    <i class="bi bi-x-lg"></i>
-                </button>
-                }
             </div>
+        </div>
+
+        <div class="col-6 col-md-3 col-lg-2">
+            <label class="form-label small text-muted mb-1" for="formatoFiltro">Formato</label>
+            <select id="formatoFiltro" class="form-select" [(ngModel)]="formatoFiltro" (ngModelChange)="aplicarFiltros()">
+                <option value="">Todos</option>
+                <option value="Vinilo">Vinilo</option>
+                <option value="CD">CD</option>
+                <option value="Cassette">Cassette</option>
+            </select>
+        </div>
+
+        <div class="col-6 col-md-3 col-lg-2">
+            <label class="form-label small text-muted mb-1" for="generoFiltro">Género</label>
+            <select id="generoFiltro" class="form-select" [(ngModel)]="generoFiltro" (ngModelChange)="aplicarFiltros()">
+                <option value="">Todos</option>
+                @for (genero of generosDisponibles; track genero) {
+                    <option [value]="genero">{{ genero }}</option>
+                }
+            </select>
+        </div>
+
+        <div class="col-6 col-md-3 col-lg-2">
+            <label class="form-label small text-muted mb-1" for="condicionFiltro">Condición</label>
+            <select id="condicionFiltro" class="form-select" [(ngModel)]="condicionFiltro" (ngModelChange)="aplicarFiltros()">
+                <option value="">Todas</option>
+                @for (condicion of condicionesDisponibles; track condicion) {
+                    <option [value]="condicion">{{ condicion }}</option>
+                }
+            </select>
+        </div>
+
+        <div class="col-6 col-md-3 col-lg-2">
+            <label class="form-label small text-muted mb-1" for="precioMax">Precio máx.</label>
+            <input
+                id="precioMax"
+                type="number"
+                min="0"
+                class="form-control"
+                placeholder="Sin límite"
+                [(ngModel)]="precioMax"
+                (ngModelChange)="aplicarFiltros()">
+        </div>
+
+        <div class="col-6 col-md-4 col-lg-3">
+            <label class="form-label small text-muted mb-1" for="ordenFiltro">Ordenar por</label>
+            <select id="ordenFiltro" class="form-select" [(ngModel)]="ordenFiltro" (ngModelChange)="aplicarFiltros()">
+                <option value="">Relevancia</option>
+                <option value="precio_asc">Precio: menor a mayor</option>
+                <option value="precio_desc">Precio: mayor a menor</option>
+                <option value="anio_desc">Año más reciente</option>
+            </select>
+        </div>
+
+        <div class="col-6 col-md-4 col-lg-3 d-flex align-items-center pt-3">
+            <div class="form-check form-switch">
+                <input
+                    id="soloDisponibles"
+                    class="form-check-input"
+                    type="checkbox"
+                    [(ngModel)]="soloDisponibles"
+                    (ngModelChange)="aplicarFiltros()">
+                <label class="form-check-label small" for="soloDisponibles">Solo con stock disponible</label>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-4 col-lg-6 text-md-end">
+            <button class="btn btn-outline-secondary btn-sm" type="button" (click)="limpiarBusqueda()">
+                Limpiar filtros
+            </button>
         </div>
     </div>
     @if (loading) {
@@ -47,12 +113,15 @@
                         <div class="card-body d-flex flex-column">
                             <h5 class="card-title text-truncate" title="{{producto.titulo}}">{{ producto.titulo }}</h5>
                             <p class="card-text text-muted small mb-1">{{ producto.artista }} ({{ producto.aniolanzam }})</p>
+                            <p class="card-text text-muted small mb-2">{{ producto.generomus }} · {{ producto.condiciones }}</p>
                             <p class="card-text fw-bold fs-4 text-primary mt-auto">${{ producto.precio | number: '1.2-2' }}</p>
         
                             <div class="d-flex justify-content-between small mb-3">
                                 <span>Formato: {{ producto.formato }}</span>
-                                @if (producto.cantstock > 0) {
-                                <span class="badge bg-success">Stock: {{ producto.cantstock }}</span>
+                                @if (getStockDisponible(producto) > 3) {
+                                <span class="badge bg-success">Stock: {{ getStockDisponible(producto) }}</span>
+                                } @else if (getStockDisponible(producto) > 0) {
+                                <span class="badge bg-warning text-dark">¡Últimos {{ getStockDisponible(producto) }}!</span>
                                 } @else {
                                 <span class="badge bg-danger">¡Agotado!</span>
                                 }
@@ -64,9 +133,9 @@
                             </div>
                             } @else {
                             <button (click)="agregarAlCarrito(producto)" class="btn btn-outline-primary w-100"
-                                [disabled]="producto.cantstock <= 0">
+                                [disabled]="getStockDisponible(producto) <= 0">
                                 <i class="bi bi-cart-plus me-1"></i>
-                                {{ producto.cantstock <= 0 ? 'Sin Stock' : 'Añadir al Carrito' }} </button>
+                                {{ getStockDisponible(producto) <= 0 ? 'Sin Stock' : 'Añadir al Carrito' }} </button>
                             }
                         </div>
                     </div>

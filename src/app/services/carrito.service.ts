@@ -76,11 +76,24 @@ export class CarritoService {
     const existingItem = items.find(item => item.producto.idprod === producto.idprod);
 
     if (existingItem) {
-      existingItem.cantidad += cantidad;
+      existingItem.producto = producto;
+      existingItem.cantidad = Math.min(existingItem.cantidad + cantidad, producto.cantstock);
     } else {
-      items.push({ producto, cantidad });
+      items.push({ producto, cantidad: Math.min(cantidad, producto.cantstock) });
     }
 
+    this.itemsSubject.next(items);
+    this.saveCart(items);
+  }
+
+  // actualiza las unidades de un producto respetando el stock maximo
+  actualizarCantidad(idProd: number, nuevaCantidad: number): void {
+    const items = this.itemsSubject.getValue();
+    const item = items.find(i => i.producto.idprod === idProd);
+    if (!item) return;
+
+    const maxStock = Number(item.producto.cantstock) || 1;
+    item.cantidad = Math.max(1, Math.min(nuevaCantidad, maxStock));
     this.itemsSubject.next(items);
     this.saveCart(items);
   }

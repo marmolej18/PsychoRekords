@@ -33,6 +33,13 @@ export class CarritoComponent implements OnInit {
     this.carritoItems$ = this.carritoService.items$;
     this.subtotal$ = this.carritoService.getSubtotal();
   }
+    // suma o resta unidades dentro del limite de stock
+  cambiarCantidad(item: CarritoItem, delta: number): void {
+    const nueva = item.cantidad + delta;
+    if (nueva >= 1 && nueva <= item.producto.cantstock) {
+      this.carritoService.actualizarCantidad(item.producto.idprod, nueva);
+    }
+  }
 
   /**
    * Elimina un producto del carrito.

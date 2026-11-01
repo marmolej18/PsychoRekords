@@ -48,6 +48,34 @@ export interface Venta {
   detalles: DetalleVenta[]; // Lista de productos en la orden
 }
 
+// Etapas por las que pasa un pedido de recogida en tienda, en orden (debe coincidir con el backend).
+export const ETAPAS_PEDIDO = ['Pagado', 'Listo para recoger', 'Entregado'];
+
+/** Compara estados sin importar mayúsculas, acentos ni espacios ("CANCELADO" == "Cancelado"). */
+export const normalizarEstado = (estado: string | null | undefined): string =>
+  (estado ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toUpperCase();
+
+export type FiltroPedidos = 'todos' | 'pagados' | 'listos' | 'entregados' | 'cancelados';
+
+export const FILTROS_PEDIDO: { clave: FiltroPedidos; texto: string }[] = [
+  { clave: 'todos', texto: 'Todos' },
+  { clave: 'pagados', texto: 'Pagados' },
+  { clave: 'listos', texto: 'Listos para recoger' },
+  { clave: 'entregados', texto: 'Entregados' },
+  { clave: 'cancelados', texto: 'Cancelados' }
+];
+
+const ESTADO_POR_FILTRO: Record<Exclude<FiltroPedidos, 'todos'>, string> = {
+  pagados: 'PAGADO',
+  listos: 'LISTO PARA RECOGER',
+  entregados: 'ENTREGADO',
+  cancelados: 'CANCELADO'
+};
+
+export function coincideFiltro(venta: Venta, filtro: FiltroPedidos): boolean {
+  return filtro === 'todos' || normalizarEstado(venta.estadopedido) === ESTADO_POR_FILTRO[filtro];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -83,15 +111,6 @@ export class VentasService {
   }
 
   /**
-   * GET /api/ventas/usuario/:idUsuario
-   * Obtiene el historial de ventas del usuario logueado.
-   */
-  getHistorialVentas(idUsuario: number): Observable<Venta[]> {
-    const historialUrl = `${this.apiUrl}/usuario/${idUsuario}`;
-    return this.http.get<Venta[]>(historialUrl);
-  }
-
-  /**
    * GET /api/ventas/mis-pedidos
    * Pedidos del cliente autenticado (el backend toma el usuario del JWT).
    */
@@ -106,6 +125,14 @@ export class VentasService {
   getTodasLasVentas(): Observable<Venta[]> {
     const headers = this.getAdminHeaders();
     return this.http.get<Venta[]>(`${this.apiUrl}/todas`, { headers });
+  }
+
+  /**
+   * PUT /api/ventas/estado/:idventa - Avanza el pedido a la siguiente etapa (Admin).
+   */
+  actualizarEstado(idventa: number, estado: string): Observable<{ idventa: number; estadopedido: string }> {
+    return this.http.put<{ idventa: number; estadopedido: string }>(
+      `${this.apiUrl}/estado/${idventa}`, { estado }, { headers: this.getAdminHeaders() });
   }
 
   /**

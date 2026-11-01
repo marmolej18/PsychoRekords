@@ -5,3 +5,9 @@ thead th, .card-header { background-color: var(--verdeClaro2); color: var(--dark
 .btn-detalle:hover, .btn-detalle:focus-visible { background-color: var(--darkGr); color: var(--white); }
 .card-body p { margin-bottom: .5rem; }
 th, td { padding: .85rem; }
+.filtros { display: flex; flex-wrap: wrap; gap: .5rem; }
+.filtros .btn { border: 1px solid var(--darkGr); color: var(--darkBl); background-color: var(--white); }
+.filtros .btn.activo { background-color: var(--green); }
+.conteo { display: inline-block; min-width: 1.5em; margin-left: .25rem; border-radius: 1em; background-color: var(--verdeClaro2); font-size: .8em; }
+/* Deja espacio para que la barra de navegación no tape el detalle al hacer scroll. */
+.detalle { scroll-margin-top: 7rem; }

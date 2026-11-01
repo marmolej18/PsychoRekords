@@ -70,6 +70,13 @@
                   </tbody>
                 </table>
               </div>
+              @if (!esCancelado(pedido) && !esEntregado(pedido)) {
+                <p class="cancelacion small mt-3 mb-0">
+                  ¿Necesitas cancelar este pedido?
+                  <a [href]="whatsappNegocio" target="_blank" rel="noopener">Escríbenos por WhatsApp</a>
+                  indicando el pedido #{{ pedido.idventa }} y lo gestionamos por ti.
+                </p>
+              }
             </div>
           }
         </li>

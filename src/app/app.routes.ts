@@ -7,7 +7,6 @@ import { RegistroUsuarioComponent } from './registro-usuario/registro-usuario.co
 import { CatalogoComponent } from './catalogo/catalogo.component';
 import { CarritoComponent } from './carrito/carrito.component';
 import { CheckoutComponent } from './checkout/checkout.component';
-import { HistorialComponent } from './historial/historial.component';
 import { InventarioComponent } from './inventario/inventario.component';
 import { ReportesComponent } from './reportes/reportes.component';
 import { GestionUsuariosComponent } from './gestion-usuarios/gestion-usuarios.component';
@@ -27,7 +26,6 @@ export const routes: Routes = [
     { path: 'detalles/:id', component: DetallesComponent},
     { path: 'carrito', component: CarritoComponent },
     { path: 'checkout', component: CheckoutComponent },
-    { path: 'historial', component: HistorialComponent },
     { path: 'mis-pedidos', component: MisPedidosComponent },
     { path: 'admin/ventas', component: VentasAdminComponent, canActivate: [adminGuard] },
     { path: 'admin/inventario', component: InventarioComponent },

@@ -171,6 +171,12 @@ const cancelarVenta = async (req, res) => {
         }
         idVenta = Number(idVentaStr); // Convertir a número antes de usarlo en el query
 
+        // Un pedido entregado ya salió de la tienda: no se puede regresar su stock al inventario.
+        const actual = await db.query('SELECT estadopedido FROM venta WHERE idventa = $1', [idVenta]);
+        if (actual.rows[0]?.estadopedido?.toUpperCase() === 'ENTREGADO') {
+            return res.status(409).json({ message: `El pedido #${idVenta} ya fue entregado y no se puede cancelar.` });
+        }
+
         // 3. Llamar al procedimiento almacenado
         const queryText = `CALL sp_cancelar_venta($1, $2);`;
         await db.query(queryText, [idVenta, idAdmin]); // Usamos el número
@@ -185,9 +191,10 @@ const cancelarVenta = async (req, res) => {
         // 5. Manejo de Error: idVenta está garantizado que existe aquí
         console.error(`Error al cancelar venta ${idVenta}:`, error.message);
 
-        // Manejo de errores de PL/pgSQL
-        let errorMessage = error.message.includes('Falló') ?
-            error.message.split('ERROR:  ')[1] :
+        // Manejo de errores de PL/pgSQL: "Falló la cancelación de la venta N: ERROR: <motivo>"
+        const motivo = error.message.match(/ERROR:\s*(.+)$/);
+        let errorMessage = error.message.includes('Falló') && motivo ?
+            motivo[1] :
             'Error desconocido al intentar cancelar la venta.';
 
         res.status(400).json({ message: errorMessage });
@@ -280,4 +287,43 @@ const getMisPedidos = async (req, res) => {
     }
 };
 
-module.exports = { crearVenta, getVentasByUsuario, cancelarVenta, getTodasLasVentas, getDetalleVenta, getMisPedidos };
+// Flujo de un pedido de recogida en tienda. La cancelación va aparte, por sp_cancelar_venta.
+const ETAPAS_PEDIDO = ['Pagado', 'Listo para recoger', 'Entregado'];
+
+/**
+ * PUT /api/ventas/estado/:idventa - Avanza el pedido a la siguiente etapa (Admin).
+ * Body: { "estado": "Listo para recoger" }
+ */
+const avanzarEstadoVenta = async (req, res) => {
+    const idventa = Number(req.params.idventa);
+    if (!Number.isSafeInteger(idventa) || idventa <= 0) {
+        return res.status(400).json({ message: 'El número de venta no es válido.' });
+    }
+    const estado = req.body?.estado;
+    const destino = ETAPAS_PEDIDO.indexOf(estado);
+    if (destino < 1) {
+        return res.status(400).json({ message: 'El estado solicitado no es válido.' });
+    }
+    try {
+        // Solo avanza si el pedido está justo en la etapa anterior: evita saltos, retrocesos y dobles clics.
+        const result = await db.query(`
+            UPDATE venta SET estadopedido = $1
+            WHERE idventa = $2 AND upper(estadopedido) = upper($3)
+            RETURNING idventa, estadopedido`, [estado, idventa, ETAPAS_PEDIDO[destino - 1]]);
+        if (!result.rows.length) {
+            const actual = await db.query('SELECT estadopedido FROM venta WHERE idventa = $1', [idventa]);
+            if (!actual.rows.length) {
+                return res.status(404).json({ message: 'La venta no existe.' });
+            }
+            return res.status(409).json({
+                message: `El pedido está en "${actual.rows[0].estadopedido}" y no puede pasar a "${estado}".`
+            });
+        }
+        res.json({ message: `Pedido #${idventa} actualizado a "${estado}".`, ...result.rows[0] });
+    } catch (error) {
+        console.error(`Error al actualizar el estado de la venta ${idventa}:`, error);
+        res.status(500).json({ message: 'No se pudo actualizar el estado del pedido.' });
+    }
+};
+
+module.exports = { crearVenta, getVentasByUsuario, cancelarVenta, getTodasLasVentas, getDetalleVenta, getMisPedidos, avanzarEstadoVenta };

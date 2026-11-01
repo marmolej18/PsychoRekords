@@ -2,15 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../services/auth.service';
-import { Venta, VentasService } from '../services/ventas.service';
-
-export type FiltroPedidos = 'todos' | 'curso' | 'entregados' | 'cancelados';
-
-// Etapas por las que pasa un pedido de recogida en tienda, en orden.
-export const ETAPAS = ['Pagado', 'Listo para recoger', 'Entregado'];
-
-const normalizar = (estado: string | null | undefined): string =>
-  (estado ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toUpperCase();
+import {
+  coincideFiltro, ETAPAS_PEDIDO, FILTROS_PEDIDO, FiltroPedidos, normalizarEstado as normalizar, Venta, VentasService
+} from '../services/ventas.service';
 
 @Component({
   selector: 'app-mis-pedidos',
@@ -20,13 +14,10 @@ const normalizar = (estado: string | null | undefined): string =>
   styleUrl: './mis-pedidos.component.css'
 })
 export class MisPedidosComponent implements OnInit {
-  readonly etapas = ETAPAS;
-  readonly filtros: { clave: FiltroPedidos; texto: string }[] = [
-    { clave: 'todos', texto: 'Todos' },
-    { clave: 'curso', texto: 'En curso' },
-    { clave: 'entregados', texto: 'Entregados' },
-    { clave: 'cancelados', texto: 'Cancelados' }
-  ];
+  readonly etapas = ETAPAS_PEDIDO;
+  // Las cancelaciones las hace el admin; el cliente las solicita por el WhatsApp del negocio (mismo enlace que el footer).
+  readonly whatsappNegocio = 'https://wa.me/qr/DPZGF3WG5WBOJ1';
+  readonly filtros = FILTROS_PEDIDO;
 
   pedidos: Venta[] = [];
   filtro: FiltroPedidos = 'todos';
@@ -58,20 +49,11 @@ export class MisPedidosComponent implements OnInit {
   }
 
   get pedidosFiltrados(): Venta[] {
-    return this.pedidos.filter(p => this.coincide(p, this.filtro));
+    return this.pedidos.filter(p => coincideFiltro(p, this.filtro));
   }
 
   contar(filtro: FiltroPedidos): number {
-    return this.pedidos.filter(p => this.coincide(p, filtro)).length;
-  }
-
-  private coincide(pedido: Venta, filtro: FiltroPedidos): boolean {
-    switch (filtro) {
-      case 'curso': return !this.esCancelado(pedido) && !this.esEntregado(pedido);
-      case 'entregados': return this.esEntregado(pedido);
-      case 'cancelados': return this.esCancelado(pedido);
-      default: return true;
-    }
+    return this.pedidos.filter(p => coincideFiltro(p, filtro)).length;
   }
 
   alternar(idventa: number): void {
@@ -83,13 +65,13 @@ export class MisPedidosComponent implements OnInit {
 
   /** Índice de la etapa actual del pedido (-1 si el estado no forma parte del flujo). */
   etapaActual(pedido: Venta): number {
-    return ETAPAS.findIndex(e => normalizar(e) === normalizar(pedido.estadopedido));
+    return ETAPAS_PEDIDO.findIndex(e => normalizar(e) === normalizar(pedido.estadopedido));
   }
 
   estadoTexto(pedido: Venta): string {
     if (this.esCancelado(pedido)) return 'Cancelado';
     const i = this.etapaActual(pedido);
-    return i >= 0 ? ETAPAS[i] : (pedido.estadopedido || 'Sin estado');
+    return i >= 0 ? ETAPAS_PEDIDO[i] : (pedido.estadopedido || 'Sin estado');
   }
 
   estadoClase(pedido: Venta): string {

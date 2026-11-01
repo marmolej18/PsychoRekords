@@ -35,5 +35,8 @@ h1, h2 { color: var(--darkBl); }
 .seguimiento li.actual { font-weight: 700; }
 .seguimiento li.actual .punto { background-color: var(--green); }
 
+.cancelacion { padding: .75rem 1rem; border-radius: .5rem; background-color: var(--gray); }
+.cancelacion a { color: var(--darkBl); font-weight: 700; }
+
 th, td { padding: .75rem; }
 thead th { background-color: var(--verdeClaro2); color: var(--darkBl); }

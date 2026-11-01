@@ -8,12 +8,20 @@
   } @else if (!ventas.length) {
     <div class="alert alert-info text-center">Todavía no hay ventas registradas.</div>
   } @else {
+    <div class="filtros mb-3" role="group" aria-label="Filtrar ventas por estado">
+      @for (f of filtros; track f.clave) {
+        <button type="button" class="btn btn-sm" [class.activo]="filtro === f.clave"
+          [attr.aria-pressed]="filtro === f.clave" (click)="filtro = f.clave">
+          {{ f.texto }} <span class="conteo">{{ contar(f.clave) }}</span>
+        </button>
+      }
+    </div>
     <div class="table-responsive border rounded">
       <table class="table table-hover align-middle mb-0">
-        <caption class="px-3">{{ ventas.length }} ventas registradas. Las más recientes aparecen primero.</caption>
+        <caption class="px-3">Mostrando {{ ventasFiltradas.length }} de {{ ventas.length }} ventas. Las más recientes aparecen primero.</caption>
         <thead><tr><th scope="col">Venta</th><th scope="col">Fecha</th><th scope="col">Cliente</th><th scope="col">Estado</th><th scope="col">Total</th><th scope="col">Detalle</th></tr></thead>
         <tbody>
-          @for (venta of ventas; track venta.idventa) {
+          @for (venta of ventasFiltradas; track venta.idventa) {
             <tr [class.table-active]="seleccionada?.idventa === venta.idventa">
               <th scope="row">#{{ venta.idventa }}</th>
               <td>{{ venta.fecha | date:'dd/MM/yyyy HH:mm' }}</td>
@@ -22,12 +30,14 @@
               <td class="text-nowrap">{{ venta.totalventa | currency:'MXN':'$' }}</td>
               <td><button class="btn btn-detalle btn-sm" (click)="verDetalle(venta.idventa)" [attr.aria-label]="'Ver detalle de la venta ' + venta.idventa">Ver detalle</button></td>
             </tr>
+          } @empty {
+            <tr><td colspan="6" class="text-center text-muted">No hay ventas en esta categoría.</td></tr>
           }
         </tbody>
       </table>
     </div>
   }
-  <div aria-live="polite">
+  <div #detalle class="detalle" aria-live="polite">
     @if (cargandoDetalle) { <p role="status" class="mt-4">Cargando detalle...</p> }
     @if (errorDetalle) { <p role="alert" class="alert alert-danger mt-4">{{ errorDetalle }}</p> }
     @if (seleccionada; as venta) {
@@ -38,7 +48,24 @@
         </div>
         <div class="card-body">
           <div class="row mb-3">
-            <div class="col-md-6"><h3>Datos del pedido</h3><p>{{ venta.fecha | date:'dd/MM/yyyy HH:mm' }}</p><p>{{ venta.cliente }}</p><p>{{ venta.correo }}</p><span [class]="estadoClase(venta.estadopedido)">{{ venta.estadopedido }}</span></div>
+            <div class="col-md-6"><h3>Datos del pedido</h3><p>{{ venta.fecha | date:'dd/MM/yyyy HH:mm' }}</p><p>{{ venta.cliente }}</p><p>{{ venta.correo }}</p><span [class]="estadoClase(venta.estadopedido)">{{ venta.estadopedido }}</span>
+              <div class="mt-3 d-flex flex-wrap gap-2">
+                @if (siguienteEtapa(venta); as siguiente) {
+                  <button class="btn btn-detalle btn-sm" (click)="avanzarEstado(venta)" [disabled]="actualizando">
+                    {{ actualizando ? 'Actualizando...' : 'Marcar como ' + siguiente }}
+                  </button>
+                }
+                @if (puedeCancelar(venta)) {
+                  <button class="btn btn-outline-danger btn-sm" (click)="cancelarPedido(venta)" [disabled]="actualizando">Cancelar pedido</button>
+                }
+                @if (!siguienteEtapa(venta) && !puedeCancelar(venta)) {
+                  <p class="text-muted small mb-0">Este pedido no tiene más etapas por avanzar.</p>
+                }
+              </div>
+              <div>
+                @if (mensajeEstado) { <p role="status" class="text-success small mt-2 mb-0">{{ mensajeEstado }}</p> }
+              </div>
+            </div>
             <div class="col-md-6"><h3>Punto de entrega</h3><p class="fw-bold">{{ venta.nombrepunto }}</p><p>{{ venta.direccioncompleta }}</p></div>
           </div>
           <div class="table-responsive">

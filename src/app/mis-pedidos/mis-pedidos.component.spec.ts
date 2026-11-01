@@ -46,11 +46,28 @@ describe('Mis pedidos del cliente', () => {
     expect(el.textContent).toContain('Lun-Sab 10am-8pm');
   });
 
+  it('ofrece WhatsApp para cancelar solo en pedidos en curso', () => {
+    const fixture = TestBed.createComponent(MisPedidosComponent);
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+    const el: HTMLElement = fixture.nativeElement;
+    c.alternar(3); fixture.detectChanges();
+    expect(el.querySelector('.cancelacion a')?.getAttribute('href')).toBe(c.whatsappNegocio);
+    expect(el.querySelector('.cancelacion')?.textContent).toContain('#3');
+    for (const id of [2, 1]) {
+      c.alternar(id); fixture.detectChanges();
+      expect(el.querySelector('.cancelacion')).toBeNull();
+    }
+  });
+
   it('filtra por estado', () => {
     const fixture = TestBed.createComponent(MisPedidosComponent);
     fixture.detectChanges();
     const c = fixture.componentInstance;
-    expect(c.contar('curso')).toBe(1);
+    expect(c.contar('pagados')).toBe(1);
+    expect(c.contar('listos')).toBe(0);
+    c.filtro = 'pagados';
+    expect(c.pedidosFiltrados.map(p => p.idventa)).toEqual([3]);
     c.filtro = 'entregados';
     expect(c.pedidosFiltrados.map(p => p.idventa)).toEqual([2]);
     c.filtro = 'cancelados';

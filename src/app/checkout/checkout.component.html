@@ -8,7 +8,7 @@
         <p class="fs-5">Tu número de orden es: **#{{ ventaExitosaData.idVenta }}**</p>
         <p>Total pagado: **${{ ventaExitosaData.totalVenta | number: '1.2-2' }}**</p>
         <p class="mb-0">Recibirás un correo electrónico con los detalles. Gracias por tu compra.</p>
-        <a [routerLink]="['/historial']" class="btn btn-primary mt-3">Ver Mis Pedidos</a>
+        <a [routerLink]="['/mis-pedidos']" class="btn btn-primary mt-3">Ver Mis Pedidos</a>
     </div>
     } @else {
     <div class="row">

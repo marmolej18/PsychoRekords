@@ -114,6 +114,11 @@ const crearVenta = async (req, res) => {
 const getVentasByUsuario = async (req, res) => {
     const idUsuario = req.params.idUsuario;
 
+    // Un cliente solo puede consultar su propio historial; el admin puede ver cualquiera.
+    if (req.usuario.rol !== 'admin' && Number(idUsuario) !== Number(req.usuario.idUsuario)) {
+        return res.status(403).json({ message: 'No puedes consultar los pedidos de otro usuario.' });
+    }
+
     // Consulta simple a la VISTA
     const queryText = `
         SELECT 
@@ -242,4 +247,37 @@ const getDetalleVenta = async (req, res) => {
     }
 };
 
-module.exports = { crearVenta, getVentasByUsuario, cancelarVenta, getTodasLasVentas, getDetalleVenta };
+/**
+ * GET /api/ventas/mis-pedidos - Pedidos del cliente autenticado (el id sale del JWT, no de la URL).
+ */
+const getMisPedidos = async (req, res) => {
+    const idusuario = Number(req.usuario?.idUsuario);
+    if (!Number.isSafeInteger(idusuario) || idusuario <= 0) {
+        return res.status(401).json({ message: 'Sesión inválida.' });
+    }
+    try {
+        // Las cantidades negativas corresponden a ajustes de cancelación, no al pedido original.
+        const result = await db.query(`
+            SELECT v.idventa, v.fecha, v.totalventa, v.estadopedido,
+                   pe.nombrepunto, pe.direccioncompleta, pe.horarioatencion,
+                   COALESCE((SELECT json_agg(json_build_object(
+                       'iddetalle', dv.iddetalle, 'titulo', p.titulo, 'artista', p.artista,
+                       'cantidad', dv.cantidad, 'precioUnitario', dv.preciounitario) ORDER BY dv.iddetalle)
+                       FROM detalleventa dv LEFT JOIN producto p ON p.idprod = dv.idprod
+                       WHERE dv.idventa = v.idventa AND dv.cantidad > 0), '[]'::json) AS detalles
+            FROM venta v
+            LEFT JOIN puntoentrega pe ON pe.idpunto = v.idpunto
+            WHERE v.idusuario = $1
+            ORDER BY v.fecha DESC, v.idventa DESC`, [idusuario]);
+        res.json(result.rows.map(venta => ({
+            ...venta,
+            totalventa: Number(venta.totalventa),
+            detalles: venta.detalles.map(d => ({ ...d, precioUnitario: Number(d.precioUnitario) }))
+        })));
+    } catch (error) {
+        console.error(`Error al consultar los pedidos del usuario ${idusuario}:`, error);
+        res.status(500).json({ message: 'No se pudieron consultar tus pedidos.' });
+    }
+};
+
+module.exports = { crearVenta, getVentasByUsuario, cancelarVenta, getTodasLasVentas, getDetalleVenta, getMisPedidos };

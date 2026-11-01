@@ -48,7 +48,7 @@
 
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownProfile">
                 <li><a class="dropdown-item" [routerLink]="['/perfil']">Mi Perfil</a></li>
-                <li><a class="dropdown-item" [routerLink]="['/historial']">Mis Pedidos</a></li>
+                <li><a class="dropdown-item" routerLink="/mis-pedidos" (click)="cerrarMenu()">Mis Pedidos</a></li>
                 <li>
                 <hr class="dropdown-divider">
                 </li>

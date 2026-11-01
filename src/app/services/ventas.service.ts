@@ -39,6 +39,7 @@ export interface Venta {
   cliente?: string;
   correo?: string;
   direccioncompleta?: string;
+  horarioatencion?: string;
   idventa: number;
   fecha: string; // String de fecha ISO
   totalventa: number;
@@ -88,6 +89,14 @@ export class VentasService {
   getHistorialVentas(idUsuario: number): Observable<Venta[]> {
     const historialUrl = `${this.apiUrl}/usuario/${idUsuario}`;
     return this.http.get<Venta[]>(historialUrl);
+  }
+
+  /**
+   * GET /api/ventas/mis-pedidos
+   * Pedidos del cliente autenticado (el backend toma el usuario del JWT).
+   */
+  getMisPedidos(): Observable<Venta[]> {
+    return this.http.get<Venta[]>(`${this.apiUrl}/mis-pedidos`);
   }
 
   getDetalleVenta(idventa: number): Observable<Venta> {

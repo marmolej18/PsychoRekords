@@ -15,6 +15,7 @@ import { DetallesComponent } from './detalles/detalles.component';
 
 import { VentasAdminComponent } from './ventas-admin/ventas-admin.component';
 import { adminGuard } from './ventas-admin/admin.guard';
+import { MisPedidosComponent } from './mis-pedidos/mis-pedidos.component';
 
 export const routes: Routes = [
     { path: 'inicio', component: InicioComponent },
@@ -27,6 +28,7 @@ export const routes: Routes = [
     { path: 'carrito', component: CarritoComponent },
     { path: 'checkout', component: CheckoutComponent },
     { path: 'historial', component: HistorialComponent },
+    { path: 'mis-pedidos', component: MisPedidosComponent },
     { path: 'admin/ventas', component: VentasAdminComponent, canActivate: [adminGuard] },
     { path: 'admin/inventario', component: InventarioComponent },
     { path: 'admin/reportes', component: ReportesComponent },

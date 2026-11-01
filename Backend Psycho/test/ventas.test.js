@@ -4,9 +4,11 @@ const jwt = require('jsonwebtoken');
 const dbPath = require.resolve('../src/db');
 let consultas = [];
 let responder;
+let blocklistFalla = false;
 require.cache[dbPath] = { id: dbPath, filename: dbPath, loaded: true,
   exports: { query: async (sql, params) => {
     if (sql.includes('FROM token_blocklist')) {
+      if (blocklistFalla) throw new Error('no existe la relación «token_blocklist»');
       return { rows: [], rowCount: 0 };
     }
     consultas.push({ sql, params });
@@ -59,6 +61,35 @@ test('ID inválido y venta inexistente', async () => {
     assert.equal((await pedir('detalle/' + id, '2', 'admin')).status, 400);
   }
   assert.equal((await pedir('detalle/999', '2', 'admin')).status, 404);
+});
+test('mis-pedidos usa el usuario del token y omite ajustes de cancelación', async () => {
+  assert.equal((await pedir('mis-pedidos')).status, 401);
+  consultas = [];
+  responder = async () => ({ rows: [{idventa:7,totalventa:'300.00',detalles:[{iddetalle:1,cantidad:1,precioUnitario:'300.00'}]}] });
+  const r = await pedir('mis-pedidos', '4', 'cliente');
+  assert.equal(r.status, 200);
+  assert.deepEqual(consultas[0].params, [4]);
+  assert.match(consultas[0].sql, /dv.cantidad > 0/);
+  assert.equal(r.body[0].totalventa, 300);
+  assert.equal(r.body[0].detalles[0].precioUnitario, 300);
+  responder = async () => ({ rows: [] });
+  assert.deepEqual((await pedir('mis-pedidos', '4', 'cliente')).body, []);
+  responder = async () => { throw new Error('BD no disponible'); };
+  assert.equal((await pedir('mis-pedidos', '4', 'cliente')).status, 500);
+});
+test('un fallo de la BD al validar la sesión responde 500, no 403', async () => {
+  blocklistFalla = true;
+  try {
+    assert.equal((await pedir('mis-pedidos', '4', 'cliente')).status, 500);
+  } finally {
+    blocklistFalla = false;
+  }
+});
+test('un cliente no puede ver el historial de otro usuario', async () => {
+  responder = async () => ({ rows: [] });
+  assert.equal((await pedir('usuario/9', '4', 'cliente')).status, 403);
+  assert.equal((await pedir('usuario/4', '4', 'cliente')).status, 200);
+  assert.equal((await pedir('usuario/9', '2', 'admin')).status, 200);
 });
 test('lista vacía y error de base de datos', async () => {
   responder = async () => ({ rows: [] });

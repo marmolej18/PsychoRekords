@@ -24,7 +24,7 @@ describe('Historial administrativo', () => {
   });
   it('filtra las ventas por estado con sus conteos', () => {
     servicio.getTodasLasVentas.and.returnValue(of([
-      { ...venta, idventa: 1 }, { ...venta, idventa: 2, estadopedido: 'Listo para recoger' },
+      { ...venta, idventa: 1 }, { ...venta, idventa: 2, estadopedido: 'En preparación' },
       { ...venta, idventa: 3, estadopedido: 'Entregado' }, { ...venta, idventa: 4, estadopedido: 'CANCELADO' }
     ]));
     const fixture = TestBed.createComponent(VentasAdminComponent);
@@ -35,7 +35,7 @@ describe('Historial administrativo', () => {
     expect(filtro('Pagados').textContent).toContain('1');
     filtro('Pagados').click(); fixture.detectChanges();
     expect([...el.querySelectorAll('tbody th')].map(t => t.textContent)).toEqual(['#1']);
-    filtro('Listos para recoger').click(); fixture.detectChanges();
+    filtro('En preparación').click(); fixture.detectChanges();
     expect([...el.querySelectorAll('tbody th')].map(t => t.textContent)).toEqual(['#2']);
     filtro('Cancelados').click(); fixture.detectChanges();
     expect([...el.querySelectorAll('tbody th')].map(t => t.textContent)).toEqual(['#4']);
@@ -53,19 +53,36 @@ describe('Historial administrativo', () => {
   it('avanza el pedido a la siguiente etapa y actualiza la lista', () => {
     spyOn(window, 'confirm').and.returnValue(true);
     servicio.getTodasLasVentas.and.returnValue(of([{ ...venta }]));
-    servicio.actualizarEstado.and.returnValue(of({ idventa: 5, estadopedido: 'Listo para recoger' }));
+    servicio.actualizarEstado.and.returnValue(of({ idventa: 5, estadopedido: 'En preparación' }));
     const fixture = TestBed.createComponent(VentasAdminComponent);
     fixture.detectChanges();
     const component = fixture.componentInstance;
     component.verDetalle(5); fixture.detectChanges();
     const boton: HTMLButtonElement = [...fixture.nativeElement.querySelectorAll('button')]
-      .find((b: HTMLButtonElement) => b.textContent?.includes('Marcar como Listo para recoger'));
+      .find((b: HTMLButtonElement) => b.textContent?.includes('Marcar como En preparación'));
     boton.click(); fixture.detectChanges();
-    expect(servicio.actualizarEstado).toHaveBeenCalledWith(5, 'Listo para recoger');
-    expect(component.ventas[0].estadopedido).toBe('Listo para recoger');
-    expect(fixture.nativeElement.textContent).toContain('Marcar como Entregado');
+    expect(servicio.actualizarEstado).toHaveBeenCalledWith(5, 'En preparación', undefined);
+    expect(component.ventas[0].estadopedido).toBe('En preparación');
+    expect(fixture.nativeElement.textContent).toContain('Marcar como En tránsito');
     expect(component.siguienteEtapa({ ...venta, estadopedido: 'Entregado' })).toBeNull();
     expect(component.siguienteEtapa({ ...venta, estadopedido: 'CANCELADO' })).toBeNull();
+  });
+  it('pide paquetería y guía antes de marcar "En tránsito"', () => {
+    spyOn(window, 'confirm').and.returnValue(true);
+    servicio.actualizarEstado.and.returnValue(of({ idventa: 5, estadopedido: 'En tránsito', paqueteria: 'DHL', numero_guia: 'AB123456' }));
+    const component = TestBed.createComponent(VentasAdminComponent).componentInstance;
+    const enPreparacion = { ...venta, estadopedido: 'En preparación' };
+    expect(component.requiereGuia(enPreparacion)).toBeTrue();
+    component.avanzarEstado(enPreparacion);
+    expect(servicio.actualizarEstado).not.toHaveBeenCalled();
+    expect(component.errorDetalle).toContain('número de guía');
+    component.paqueteria = 'DHL';
+    component.numeroGuia = ' AB123456 ';
+    component.avanzarEstado(enPreparacion);
+    expect(servicio.actualizarEstado).toHaveBeenCalledWith(5, 'En tránsito', { paqueteria: 'DHL', numeroGuia: 'AB123456' });
+    expect(enPreparacion.estadopedido).toBe('En tránsito');
+    expect(component.urlRastreo({ ...enPreparacion, paqueteria: 'DHL', numero_guia: 'AB123456' })).toContain('tracking-id=AB123456');
+    expect(component.puedeCancelar({ ...venta, estadopedido: 'En tránsito' })).toBeFalse();
   });
   it('cancela el pedido, actualiza la lista y oculta las acciones', () => {
     spyOn(window, 'confirm').and.returnValue(true);

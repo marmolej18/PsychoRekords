@@ -65,7 +65,8 @@ describe('Mis pedidos del cliente', () => {
     fixture.detectChanges();
     const c = fixture.componentInstance;
     expect(c.contar('pagados')).toBe(1);
-    expect(c.contar('listos')).toBe(0);
+    expect(c.contar('preparacion')).toBe(0);
+    expect(c.contar('transito')).toBe(0);
     c.filtro = 'pagados';
     expect(c.pedidosFiltrados.map(p => p.idventa)).toEqual([3]);
     c.filtro = 'entregados';

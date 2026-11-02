@@ -13,8 +13,44 @@ const db = require('../db');
  * ]
  * }
  */
+// Campos de la dirección de envío: [nombre en el body, columna en venta, obligatorio, longitud máxima].
+const CAMPOS_ENVIO = [
+    ['destinatario', 'envio_destinatario', true, 150],
+    ['telefono', 'envio_telefono', true, 20],
+    ['calle', 'envio_calle', true, 100],
+    ['numero', 'envio_numero', true, 20],
+    ['colonia', 'envio_colonia', true, 100],
+    ['cp', 'envio_cp', true, 10],
+    ['ciudad', 'envio_ciudad', true, 50],
+    ['estado', 'envio_estado', true, 50],
+    ['referencias', 'envio_referencias', false, 300],
+];
+
+/** Devuelve la dirección limpia (en el orden de CAMPOS_ENVIO) o un mensaje de error. */
+const validarEnvio = (envio) => {
+    if (!envio || typeof envio !== 'object') {
+        return { error: 'La dirección de envío es obligatoria.' };
+    }
+    const valores = [];
+    for (const [campo, , obligatorio, max] of CAMPOS_ENVIO) {
+        const valor = typeof envio[campo] === 'string' ? envio[campo].trim() : '';
+        if (obligatorio && !valor) return { error: `Falta el campo "${campo}" de la dirección de envío.` };
+        if (valor.length > max) return { error: `El campo "${campo}" excede ${max} caracteres.` };
+        valores.push(valor || null);
+    }
+    const [, telefono, , , , cp] = valores;
+    if (!/^\d{5}$/.test(cp)) return { error: 'El código postal debe tener 5 dígitos.' };
+    if (!/^\d{10}$/.test(telefono.replace(/[\s-]/g, ''))) return { error: 'El teléfono debe tener 10 dígitos.' };
+    return { valores };
+};
+
 const crearVenta = async (req, res) => {
-    const { idusuario, idpunto, productos } = req.body;
+    const { idusuario, idpunto, productos, envio } = req.body;
+
+    const direccion = validarEnvio(envio);
+    if (direccion.error) {
+        return res.status(400).json({ message: direccion.error });
+    }
 
     // pre validacion de stock usando funcion
     try {
@@ -46,13 +82,14 @@ const crearVenta = async (req, res) => {
         // Calcular el total de la venta
         const totalVenta = productos.reduce((sum, item) => sum + (item.cantidad * item.precioUnitario), 0);
 
-        // 2. Insertar en la tabla Venta
+        // 2. Insertar en la tabla Venta, con una copia de la dirección de envío (HU7.1)
+        const columnasEnvio = CAMPOS_ENVIO.map(([, columna]) => columna);
         const ventaQuery = `
-            INSERT INTO "venta" ("idusuario", "idpunto", "totalventa", "estadopedido")
-            VALUES ($1, $2, $3, 'Pagado')
+            INSERT INTO "venta" ("idusuario", "idpunto", "totalventa", "estadopedido", ${columnasEnvio.join(', ')})
+            VALUES ($1, $2, $3, 'Pagado', ${columnasEnvio.map((_, i) => '$' + (i + 4)).join(', ')})
             RETURNING "idventa", "fecha"`; // RETURNING nos da el ID y la fecha generados
 
-        const resultVenta = await client.query(ventaQuery, [idusuario, idpunto, totalVenta]);
+        const resultVenta = await client.query(ventaQuery, [idusuario, idpunto ?? null, totalVenta, ...direccion.valores]);
         const idVenta = resultVenta.rows[0].idventa;
         const fechaVenta = resultVenta.rows[0].fecha;
 
@@ -171,10 +208,12 @@ const cancelarVenta = async (req, res) => {
         }
         idVenta = Number(idVentaStr); // Convertir a número antes de usarlo en el query
 
-        // Un pedido entregado ya salió de la tienda: no se puede regresar su stock al inventario.
+        // Un pedido en tránsito o entregado ya salió de la tienda: no se puede regresar su stock al inventario.
         const actual = await db.query('SELECT estadopedido FROM venta WHERE idventa = $1', [idVenta]);
-        if (actual.rows[0]?.estadopedido?.toUpperCase() === 'ENTREGADO') {
-            return res.status(409).json({ message: `El pedido #${idVenta} ya fue entregado y no se puede cancelar.` });
+        const estadoActual = actual.rows[0]?.estadopedido?.toUpperCase();
+        if (estadoActual === 'ENTREGADO' || estadoActual === 'EN TRÁNSITO') {
+            const motivo = estadoActual === 'ENTREGADO' ? 'ya fue entregado' : 'ya va en camino';
+            return res.status(409).json({ message: `El pedido #${idVenta} ${motivo} y no se puede cancelar.` });
         }
 
         // 3. Llamar al procedimiento almacenado
@@ -203,16 +242,60 @@ const cancelarVenta = async (req, res) => {
 
 
 
+// Columnas de envío y rastreo que se devuelven junto con cada venta.
+const columnasEnvioRastreo = `v.envio_destinatario, v.envio_telefono, v.envio_calle, v.envio_numero,
+           v.envio_colonia, v.envio_cp, v.envio_ciudad, v.envio_estado, v.envio_referencias,
+           v.paqueteria, v.numero_guia`;
+
 const consultaVentas = `
     SELECT v.idventa, v.fecha, v.totalventa, v.estadopedido,
            concat_ws(' ', u.nombre, u.apellidop, u.apellidom) AS cliente,
            u.correoelectronico AS correo, pe.nombrepunto,
-           pe.direccioncompleta
+           pe.direccioncompleta, ${columnasEnvioRastreo}
     FROM venta v
     LEFT JOIN usuario u ON u.idusuario = v.idusuario
     LEFT JOIN puntoentrega pe ON pe.idpunto = v.idpunto`;
 
+// Acepta solo fechas reales en formato AAAA-MM-DD (rechaza, por ejemplo, 2026-02-30).
+const esFechaValida = (texto) => /^\d{4}-\d{2}-\d{2}$/.test(texto)
+    && new Date(texto + 'T00:00:00Z').toISOString().startsWith(texto);
+
+/**
+ * GET /api/ventas/todas - Todas las ventas, de la más reciente a la más antigua (Admin).
+ * Filtros opcionales: ?desde=AAAA-MM-DD, ?hasta=AAAA-MM-DD (ambos inclusive) e ?idventa=N.
+ */
 const getTodasLasVentas = async (req, res) => {
+    const { desde, hasta, idventa } = req.query;
+    const condiciones = [];
+    const params = [];
+
+    if (idventa !== undefined) {
+        const id = Number(idventa);
+        if (!Number.isSafeInteger(id) || id <= 0) {
+            return res.status(400).json({ message: 'El número de orden no es válido.' });
+        }
+        params.push(id);
+        condiciones.push(`v.idventa = $${params.length}`);
+    }
+    for (const [nombre, valor] of [['desde', desde], ['hasta', hasta]]) {
+        if (valor !== undefined && !esFechaValida(valor)) {
+            return res.status(400).json({ message: `La fecha "${nombre}" debe tener el formato AAAA-MM-DD.` });
+        }
+    }
+    if (desde && hasta && desde > hasta) {
+        return res.status(400).json({ message: 'La fecha "desde" no puede ser posterior a "hasta".' });
+    }
+    if (desde) {
+        params.push(desde);
+        condiciones.push(`v.fecha >= $${params.length}::date`);
+    }
+    if (hasta) {
+        // Se compara contra el día siguiente para incluir todas las ventas del día "hasta".
+        params.push(hasta);
+        condiciones.push(`v.fecha < $${params.length}::date + 1`);
+    }
+    const filtro = condiciones.length ? ' WHERE ' + condiciones.join(' AND ') : '';
+
     try {
         const result = await db.query(`SELECT v.*,
             COALESCE((SELECT json_agg(json_build_object(
@@ -220,7 +303,7 @@ const getTodasLasVentas = async (req, res) => {
                 'cantidad', dv.cantidad, 'precioUnitario', dv.preciounitario) ORDER BY dv.iddetalle)
                 FROM detalleventa dv LEFT JOIN producto p ON p.idprod = dv.idprod
                 WHERE dv.idventa = v.idventa AND dv.cantidad > 0), '[]'::json) AS detalles
-            FROM (${consultaVentas}) v ORDER BY v.fecha DESC, v.idventa DESC`);
+            FROM (${consultaVentas}) v${filtro} ORDER BY v.fecha DESC, v.idventa DESC`, params);
         res.json(result.rows.map(venta => ({ ...venta, totalventa: Number(venta.totalventa) })));
     } catch (error) {
         console.error('Error al consultar ventas:', error);
@@ -266,7 +349,7 @@ const getMisPedidos = async (req, res) => {
         // Las cantidades negativas corresponden a ajustes de cancelación, no al pedido original.
         const result = await db.query(`
             SELECT v.idventa, v.fecha, v.totalventa, v.estadopedido,
-                   pe.nombrepunto, pe.direccioncompleta, pe.horarioatencion,
+                   pe.nombrepunto, pe.direccioncompleta, pe.horarioatencion, ${columnasEnvioRastreo},
                    COALESCE((SELECT json_agg(json_build_object(
                        'iddetalle', dv.iddetalle, 'titulo', p.titulo, 'artista', p.artista,
                        'cantidad', dv.cantidad, 'precioUnitario', dv.preciounitario) ORDER BY dv.iddetalle)
@@ -287,12 +370,14 @@ const getMisPedidos = async (req, res) => {
     }
 };
 
-// Flujo de un pedido de recogida en tienda. La cancelación va aparte, por sp_cancelar_venta.
-const ETAPAS_PEDIDO = ['Pagado', 'Listo para recoger', 'Entregado'];
+// Flujo de un pedido enviado por paquetería (HU7.2). La cancelación va aparte, por sp_cancelar_venta.
+const ETAPAS_PEDIDO = ['Pagado', 'En preparación', 'En tránsito', 'Entregado'];
+const PAQUETERIAS = ['DHL', 'Estafeta', 'Correos de México'];
 
 /**
  * PUT /api/ventas/estado/:idventa - Avanza el pedido a la siguiente etapa (Admin).
- * Body: { "estado": "Listo para recoger" }
+ * Body: { "estado": "En preparación" }
+ * Para pasar a "En tránsito" también se requiere: { "paqueteria": "DHL", "numeroGuia": "1234567890" }
  */
 const avanzarEstadoVenta = async (req, res) => {
     const idventa = Number(req.params.idventa);
@@ -304,12 +389,29 @@ const avanzarEstadoVenta = async (req, res) => {
     if (destino < 1) {
         return res.status(400).json({ message: 'El estado solicitado no es válido.' });
     }
+
+    // Al salir a paquetería se guardan los datos de rastreo; en las demás etapas no se tocan.
+    let paqueteria = null;
+    let numeroGuia = null;
+    if (estado === 'En tránsito') {
+        paqueteria = req.body.paqueteria;
+        numeroGuia = typeof req.body.numeroGuia === 'string' ? req.body.numeroGuia.trim().toUpperCase() : '';
+        if (!PAQUETERIAS.includes(paqueteria)) {
+            return res.status(400).json({ message: `La paquetería debe ser una de: ${PAQUETERIAS.join(', ')}.` });
+        }
+        if (!/^[A-Z0-9-]{6,40}$/.test(numeroGuia)) {
+            return res.status(400).json({ message: 'El número de guía debe tener de 6 a 40 letras o números.' });
+        }
+    }
+
     try {
         // Solo avanza si el pedido está justo en la etapa anterior: evita saltos, retrocesos y dobles clics.
         const result = await db.query(`
-            UPDATE venta SET estadopedido = $1
+            UPDATE venta SET estadopedido = $1,
+                paqueteria = COALESCE($4, paqueteria), numero_guia = COALESCE($5, numero_guia)
             WHERE idventa = $2 AND upper(estadopedido) = upper($3)
-            RETURNING idventa, estadopedido`, [estado, idventa, ETAPAS_PEDIDO[destino - 1]]);
+            RETURNING idventa, estadopedido, paqueteria, numero_guia`,
+            [estado, idventa, ETAPAS_PEDIDO[destino - 1], paqueteria, numeroGuia]);
         if (!result.rows.length) {
             const actual = await db.query('SELECT estadopedido FROM venta WHERE idventa = $1', [idventa]);
             if (!actual.rows.length) {

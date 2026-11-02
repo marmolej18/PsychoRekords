@@ -46,6 +46,14 @@
                   </li>
                 }
               </ol>
+              @if (pedido.numero_guia) {
+                <p class="small mt-2 mb-0">
+                  Enviado por <strong>{{ pedido.paqueteria }}</strong> · Guía <strong>{{ pedido.numero_guia }}</strong>
+                  @if (urlRastreo(pedido); as url) {
+                    · <a [href]="url" target="_blank" rel="noopener">Rastrear mi paquete</a>
+                  }
+                </p>
+              }
             }
           </div>
 
@@ -53,10 +61,17 @@
             <div class="card-body border-top" [id]="'pedido-' + pedido.idventa">
               <div class="row mb-3">
                 <div class="col-md-6">
-                  <h2 class="h6">Punto de entrega</h2>
-                  <p class="fw-bold mb-1">{{ pedido.nombrepunto || 'Sin información' }}</p>
-                  @if (pedido.direccioncompleta) { <p class="mb-1">{{ pedido.direccioncompleta }}</p> }
-                  @if (pedido.horarioatencion) { <p class="mb-0 text-muted small">Horario: {{ pedido.horarioatencion }}</p> }
+                  @if (pedido.envio_calle) {
+                    <h2 class="h6">Dirección de envío</h2>
+                    <p class="fw-bold mb-1">{{ pedido.envio_destinatario }}</p>
+                    <p class="mb-1">{{ pedido.envio_calle }} {{ pedido.envio_numero }}, Col. {{ pedido.envio_colonia }}</p>
+                    <p class="mb-0">C.P. {{ pedido.envio_cp }}, {{ pedido.envio_ciudad }}, {{ pedido.envio_estado }}</p>
+                  } @else {
+                    <h2 class="h6">Punto de entrega</h2>
+                    <p class="fw-bold mb-1">{{ pedido.nombrepunto || 'Sin información' }}</p>
+                    @if (pedido.direccioncompleta) { <p class="mb-1">{{ pedido.direccioncompleta }}</p> }
+                    @if (pedido.horarioatencion) { <p class="mb-0 text-muted small">Horario: {{ pedido.horarioatencion }}</p> }
+                  }
                 </div>
               </div>
               <div class="table-responsive">
@@ -70,7 +85,7 @@
                   </tbody>
                 </table>
               </div>
-              @if (!esCancelado(pedido) && !esEntregado(pedido)) {
+              @if (!esCancelado(pedido) && !yaSalio(pedido)) {
                 <p class="cancelacion small mt-3 mb-0">
                   ¿Necesitas cancelar este pedido?
                   <a [href]="whatsappNegocio" target="_blank" rel="noopener">Escríbenos por WhatsApp</a>

@@ -8,12 +8,20 @@
   } @else if (!ventas.length) {
     <div class="alert alert-info text-center">Todavía no hay ventas registradas.</div>
   } @else {
+    <div class="filtros mb-3" role="group" aria-label="Filtrar ventas por estado">
+      @for (f of filtros; track f.clave) {
+        <button type="button" class="btn btn-sm" [class.activo]="filtro === f.clave"
+          [attr.aria-pressed]="filtro === f.clave" (click)="filtro = f.clave">
+          {{ f.texto }} <span class="conteo">{{ contar(f.clave) }}</span>
+        </button>
+      }
+    </div>
     <div class="table-responsive border rounded">
       <table class="table table-hover align-middle mb-0">
-        <caption class="px-3">{{ ventas.length }} ventas registradas. Las más recientes aparecen primero.</caption>
+        <caption class="px-3">Mostrando {{ ventasFiltradas.length }} de {{ ventas.length }} ventas. Las más recientes aparecen primero.</caption>
         <thead><tr><th scope="col">Venta</th><th scope="col">Fecha</th><th scope="col">Cliente</th><th scope="col">Estado</th><th scope="col">Total</th><th scope="col">Detalle</th></tr></thead>
         <tbody>
-          @for (venta of ventas; track venta.idventa) {
+          @for (venta of ventasFiltradas; track venta.idventa) {
             <tr [class.table-active]="seleccionada?.idventa === venta.idventa">
               <th scope="row">#{{ venta.idventa }}</th>
               <td>{{ venta.fecha | date:'dd/MM/yyyy HH:mm' }}</td>
@@ -22,12 +30,14 @@
               <td class="text-nowrap">{{ venta.totalventa | currency:'MXN':'$' }}</td>
               <td><button class="btn btn-detalle btn-sm" (click)="verDetalle(venta.idventa)" [attr.aria-label]="'Ver detalle de la venta ' + venta.idventa">Ver detalle</button></td>
             </tr>
+          } @empty {
+            <tr><td colspan="6" class="text-center text-muted">No hay ventas en esta categoría.</td></tr>
           }
         </tbody>
       </table>
     </div>
   }
-  <div aria-live="polite">
+  <div #detalle class="detalle" aria-live="polite">
     @if (cargandoDetalle) { <p role="status" class="mt-4">Cargando detalle...</p> }
     @if (errorDetalle) { <p role="alert" class="alert alert-danger mt-4">{{ errorDetalle }}</p> }
     @if (seleccionada; as venta) {
@@ -38,8 +48,66 @@
         </div>
         <div class="card-body">
           <div class="row mb-3">
-            <div class="col-md-6"><h3>Datos del pedido</h3><p>{{ venta.fecha | date:'dd/MM/yyyy HH:mm' }}</p><p>{{ venta.cliente }}</p><p>{{ venta.correo }}</p><span [class]="estadoClase(venta.estadopedido)">{{ venta.estadopedido }}</span></div>
-            <div class="col-md-6"><h3>Punto de entrega</h3><p class="fw-bold">{{ venta.nombrepunto }}</p><p>{{ venta.direccioncompleta }}</p></div>
+            <div class="col-md-6"><h3>Datos del pedido</h3><p>{{ venta.fecha | date:'dd/MM/yyyy HH:mm' }}</p><p>{{ venta.cliente }}</p><p>{{ venta.correo }}</p><span [class]="estadoClase(venta.estadopedido)">{{ venta.estadopedido }}</span>
+              @if (requiereGuia(venta)) {
+                <div class="rastreo-form mt-3">
+                  @if (venta.paqueteria) {
+                    <p class="small mb-2">Paquetería elegida por el cliente: <strong>{{ venta.paqueteria }}</strong></p>
+                  } @else {
+                    <label class="form-label small mb-1" for="paqueteria">Paquetería</label>
+                    <select id="paqueteria" class="form-select form-select-sm mb-2" [(ngModel)]="paqueteria" [disabled]="actualizando">
+                      <option value="" disabled>Selecciona una paquetería</option>
+                      @for (p of paqueterias; track p) { <option [value]="p">{{ p }}</option> }
+                    </select>
+                  }
+                  <label class="form-label small mb-1" for="numeroGuia">Número de guía</label>
+                  <input id="numeroGuia" class="form-control form-control-sm" [(ngModel)]="numeroGuia"
+                    maxlength="40" placeholder="Ej. 1234567890" [disabled]="actualizando">
+                </div>
+              }
+              <div class="mt-3 d-flex flex-wrap gap-2">
+                @if (siguienteEtapa(venta); as siguiente) {
+                  <button class="btn btn-detalle btn-sm" (click)="avanzarEstado(venta)" [disabled]="actualizando">
+                    {{ actualizando ? 'Actualizando...' : 'Marcar como ' + siguiente }}
+                  </button>
+                }
+                @if (puedeCancelar(venta)) {
+                  <button class="btn btn-outline-danger btn-sm" (click)="cancelarPedido(venta)" [disabled]="actualizando">Cancelar pedido</button>
+                }
+                @if (!siguienteEtapa(venta) && !puedeCancelar(venta)) {
+                  <p class="text-muted small mb-0">Este pedido no tiene más etapas por avanzar.</p>
+                }
+              </div>
+              <div>
+                @if (mensajeEstado) { <p role="status" class="text-success small mt-2 mb-0">{{ mensajeEstado }}</p> }
+              </div>
+            </div>
+            <div class="col-md-6">
+              @if (esDomicilio(venta)) {
+                <h3>Dirección de envío</h3>
+                @if (venta.paqueteria) {
+                  <p class="small mb-2">{{ venta.paqueteria }} – {{ venta.servicio_envio }} · {{ venta.costo_envio | currency:'MXN':'$' }}</p>
+                }
+                <p class="fw-bold mb-1">{{ venta.envio_destinatario }}</p>
+                <p class="mb-1">{{ venta.envio_calle }} {{ venta.envio_numero }}, Col. {{ venta.envio_colonia }}</p>
+                <p class="mb-1">C.P. {{ venta.envio_cp }}, {{ venta.envio_ciudad }}, {{ venta.envio_estado }}</p>
+                <p class="mb-1">Tel. {{ venta.envio_telefono }}</p>
+                @if (venta.envio_referencias) { <p class="text-muted small mb-1">Referencias: {{ venta.envio_referencias }}</p> }
+              } @else {
+                <h3>Punto medio de entrega</h3><p class="fw-bold">{{ venta.nombrepunto || 'Sin información' }} <span class="badge bg-success">Gratis</span></p><p>{{ venta.direccioncompleta }}</p>
+                @if (venta.envio_telefono || venta.envio_correo) {
+                  <h3 class="mt-3">Contacto para la entrega</h3>
+                  @if (venta.envio_telefono) { <p class="mb-1">Tel. {{ venta.envio_telefono }}</p> }
+                  @if (venta.envio_correo) { <p class="mb-1">{{ venta.envio_correo }}</p> }
+                  @if (venta.envio_referencias) { <p class="text-muted small mb-1">Referencias: {{ venta.envio_referencias }}</p> }
+                }
+              }
+              @if (venta.numero_guia) {
+                <h3 class="mt-3">Rastreo</h3>
+                <p class="mb-1">{{ venta.paqueteria }} · Guía <strong>{{ venta.numero_guia }}</strong></p>
+                @if (urlRastreo(venta); as url) { <a [href]="url" target="_blank" rel="noopener" class="small">Ver en la página de {{ venta.paqueteria }}</a> }
+              }
+            </div>
           </div>
           <div class="table-responsive">
             <table class="table align-middle">

@@ -415,3 +415,111 @@ END;
 $$ LANGUAGE plpgsql;
 
 
+-- --- ENVÍOS POR PAQUETERÍA (HU7.1 / HU7.2) ---
+-- Se puede correr sobre una base existente: solo agrega lo que falte.
+
+-- Dirección de envío congelada en la venta: no cambia aunque el cliente edite su perfil después.
+ALTER TABLE venta
+    ADD COLUMN IF NOT EXISTS envio_destinatario VARCHAR(150),
+    ADD COLUMN IF NOT EXISTS envio_telefono VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS envio_calle VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS envio_numero VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS envio_colonia VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS envio_cp VARCHAR(10),
+    ADD COLUMN IF NOT EXISTS envio_ciudad VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS envio_estado VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS envio_referencias TEXT,
+    -- Datos de rastreo: se capturan cuando el pedido pasa a "En tránsito".
+    ADD COLUMN IF NOT EXISTS paqueteria VARCHAR(30),
+    ADD COLUMN IF NOT EXISTS numero_guia VARCHAR(40);
+
+-- Cada pedido se envía a domicilio (con tarifa) o se entrega en un punto medio: idpunto ya no es obligatorio.
+ALTER TABLE venta ALTER COLUMN idpunto DROP NOT NULL;
+
+-- Tarifas fijas por paquetería. Se cambian aquí (o con UPDATE) sin tocar el código.
+CREATE TABLE IF NOT EXISTS tarifaenvio (
+    idtarifa SERIAL PRIMARY KEY,
+    paqueteria VARCHAR(30) NOT NULL CHECK (paqueteria IN ('DHL', 'Estafeta', 'Correos de México')),
+    servicio VARCHAR(60) NOT NULL,
+    precio NUMERIC(10, 2) NOT NULL CHECK (precio >= 0),
+    dias_min INT NOT NULL,
+    dias_max INT NOT NULL,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    UNIQUE (paqueteria, servicio)
+);
+
+INSERT INTO tarifaenvio (paqueteria, servicio, precio, dias_min, dias_max) VALUES
+    ('Correos de México', 'Estándar', 80.00, 7, 14),
+    ('Estafeta', 'Terrestre', 165.00, 3, 6),
+    ('DHL', 'Nacional Económico', 216.00, 2, 5)
+ON CONFLICT (paqueteria, servicio) DO NOTHING;
+
+-- Envío elegido por el cliente, congelado en la venta (0 si recoge en un punto medio).
+ALTER TABLE venta
+    ADD COLUMN IF NOT EXISTS servicio_envio VARCHAR(60),
+    ADD COLUMN IF NOT EXISTS costo_envio NUMERIC(10, 2) NOT NULL DEFAULT 0;
+
+-- Puntos medios de entrega gratuita dentro de Aguascalientes. "activo" permite retirar un punto
+-- sin perder el historial de los pedidos que ya lo usaron.
+ALTER TABLE puntoentrega ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TRUE;
+UPDATE puntoentrega SET activo = FALSE WHERE nombrepunto = 'Plaza Central';
+
+INSERT INTO puntoentrega (nombrepunto, direccioncompleta, horarioatencion)
+SELECT p.nombre, p.direccion, 'Día y hora por acordar con la tienda'
+FROM (VALUES
+    ('UAA', 'Universidad Autónoma de Aguascalientes, Ciudad Universitaria, Aguascalientes'),
+    ('Zona Centro', 'Zona Centro, Aguascalientes'),
+    ('Tres Centurias', 'Complejo Ferrocarrilero Tres Centurias, Aguascalientes')
+) AS p(nombre, direccion)
+WHERE NOT EXISTS (SELECT 1 FROM puntoentrega pe WHERE pe.nombrepunto = p.nombre);
+
+-- Copia del punto medio dentro de la venta (HU7.1): si después se edita o desactiva el punto,
+-- el historial conserva lo que el cliente eligió. Correo de contacto para coordinar la entrega.
+ALTER TABLE venta
+    ADD COLUMN IF NOT EXISTS envio_correo VARCHAR(150),
+    ADD COLUMN IF NOT EXISTS entrega_punto_nombre VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS entrega_punto_direccion TEXT,
+    ADD COLUMN IF NOT EXISTS entrega_punto_horario VARCHAR(100);
+
+-- Las ventas anteriores a este cambio se quedan con los datos que tiene hoy su punto.
+UPDATE venta v
+SET entrega_punto_nombre = pe.nombrepunto,
+    entrega_punto_direccion = pe.direccioncompleta,
+    entrega_punto_horario = pe.horarioatencion
+FROM puntoentrega pe
+WHERE pe.idpunto = v.idpunto AND v.entrega_punto_nombre IS NULL;
+
+-- El flujo cambió de "Listo para recoger" a "En preparación" / "En tránsito".
+UPDATE venta SET estadopedido = 'En preparación' WHERE upper(estadopedido) = 'LISTO PARA RECOGER';
+
+-- LEFT JOIN: los pedidos enviados a domicilio no tienen punto de entrega.
+-- El nombre y la dirección salen de la copia guardada en la venta, no del punto actual.
+CREATE OR REPLACE VIEW vw_historial_ventas AS
+SELECT
+    V."idventa",
+    V."idusuario",
+    V."fecha",
+    V."totalventa",
+    V."estadopedido",
+    COALESCE(V."entrega_punto_nombre", PE."nombrepunto") AS "nombrepunto",
+    COALESCE(V."entrega_punto_direccion", PE."direccioncompleta") AS "direccioncompleta",
+    json_agg(
+        json_build_object(
+            'iddetalle', DV."iddetalle",
+            'titulo', P."titulo",
+            'artista', P."artista",
+            'cantidad', DV."cantidad",
+            'precioUnitario', DV."preciounitario"
+        )
+    ) AS detalles
+FROM "venta" V
+LEFT JOIN "puntoentrega" PE ON V."idpunto" = PE."idpunto"
+JOIN "detalleventa" DV ON V."idventa" = DV."idventa"
+JOIN "producto" P ON DV."idprod" = P."idprod"
+GROUP BY
+    V."idventa",
+    V."idusuario",
+    PE."idpunto"
+ORDER BY V."fecha" DESC;
+
+

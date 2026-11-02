@@ -18,6 +18,7 @@ const ventasRouter = require('./rutas/ventas.rutas');
 const usuariosRouter = require('./rutas/usuarios.rutas');
 const puntosRouter = require('./rutas/puntosEntrega.rutas');
 const reportesRouter = require('./rutas/reportes.rutas');
+const tarifasEnvioRouter = require('./rutas/tarifasEnvio.rutas');
 
 // RUTAS PRINCIPALES
 app.use('/api/productos', productosRouter);
@@ -25,6 +26,7 @@ app.use('/api/ventas', ventasRouter);
 app.use('/api/usuarios', usuariosRouter);
 app.use('/api/puntos-entrega', puntosRouter);
 app.use('/api/reportes', reportesRouter);
+app.use('/api/tarifas-envio', tarifasEnvioRouter);
 
 app.get('/', (req, res) => {
     res.send('API de PsychoRecords funcionando.');

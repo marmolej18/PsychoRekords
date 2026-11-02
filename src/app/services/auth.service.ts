@@ -12,6 +12,14 @@ export interface UserAuth {
   rol: 'cliente' | 'admin'; // Añadimos el rol aquí
 }
 
+export interface JwtPayload {
+  idUsuario?: number;
+  correoElectronico?: string;
+  rol?: 'cliente' | 'admin';
+  exp?: number;
+  iat?: number;
+}
+
 export interface UserAdmin {
   idUsuario: number;
   nombre: string;
@@ -52,11 +60,46 @@ export class AuthService {
     this.loadUserFromStorage();
   }
 
-  /** Carga la sesión desde el almacenamiento local si existe junto con su JWT. */
+  // decodifica el payload en Base64url sin verificar firma en el navegador
+  decodeTokenPayload(token: string): JwtPayload | null {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return null;
+    }
+
+    try {
+      const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, '=');
+      const jsonPayload = decodeURIComponent(
+        atob(padded)
+          .split('')
+          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      return JSON.parse(jsonPayload) as JwtPayload;
+    } catch {
+      return null;
+    }
+  }
+
+  // revisa si el claim exp del token ya vencio
+  isTokenExpired(token: string): boolean {
+    const payload = this.decodeTokenPayload(token);
+    if (!payload || typeof payload.exp !== 'number') {
+      return false;
+    }
+    return payload.exp * 1000 <= Date.now();
+  }
+
+  /** Carga la sesión desde el almacenamiento local si existe junto con su JWT vigente. */
   private loadUserFromStorage(): void {
     const userJson = localStorage.getItem('currentUser');
     const token = localStorage.getItem('auth_token');
     if (userJson && token) {
+      if (this.isTokenExpired(token)) {
+        this.clearSession();
+        return;
+      }
       try {
         const user: UserAuth = JSON.parse(userJson);
         this.setUserState(user);
@@ -81,9 +124,10 @@ export class AuthService {
   login(correoElectronico: string, password: string): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/login`, { correoElectronico, password }).pipe(
       tap(response => {
+        const payload = response.token ? this.decodeTokenPayload(response.token) : null;
         const user: UserAuth = {
           ...response.usuario,
-          rol: response.usuario.rol || 'cliente'
+          rol: response.usuario.rol || payload?.rol || 'cliente'
         };
 
         if (response.token) {

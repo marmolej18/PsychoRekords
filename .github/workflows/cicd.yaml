@@ -42,7 +42,7 @@ jobs:
 
       # Compilación del proyecto
       - name: Compilar proyecto
-        run: npm run build -- --configuration production
+        run: npm run build -- --configuration=production
 
       # 6a) Vulnerabilidades en dependencias 
       - name: Auditoría de dependencias

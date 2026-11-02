@@ -5,9 +5,7 @@ import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { CarritoService } from '../services/carrito.service';
 import { AuthService } from '../services/auth.service';
-import {
-  VentasService, ContactoPunto, DetalleVentaDTO, DireccionEnvio, PuntoEntrega, TarifaEnvio, VentaDTO
-} from '../services/ventas.service';
+import { VentasService, ContactoPunto, DetalleVentaDTO, DireccionEnvio, PuntoEntrega, TarifaEnvio, VentaDTO } from '../services/ventas.service';
 import { combineLatest, Observable, Subscription } from 'rxjs';
 import { map, startWith } from 'rxjs/operators';
 
@@ -82,8 +80,17 @@ export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
     direccion.disable();
     contacto.disable();
     this.checkoutForm.get('entrega')!.valueChanges.subscribe(() => {
-      this.esDomicilio ? direccion.enable() : direccion.disable();
-      this.esPuntoMedio ? contacto.enable() : contacto.disable();
+        if (this.esDomicilio) {
+        direccion.enable();
+        } else {
+        direccion.disable();
+        }
+
+        if (this.esPuntoMedio) {
+        contacto.enable();
+        } else {
+        contacto.disable();
+        }
     });
 
     // 2. Verificar si el usuario está logueado y si el carrito no está vacío

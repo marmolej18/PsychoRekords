@@ -473,10 +473,27 @@ FROM (VALUES
 ) AS p(nombre, direccion)
 WHERE NOT EXISTS (SELECT 1 FROM puntoentrega pe WHERE pe.nombrepunto = p.nombre);
 
+-- Copia del punto medio dentro de la venta (HU7.1): si después se edita o desactiva el punto,
+-- el historial conserva lo que el cliente eligió. Correo de contacto para coordinar la entrega.
+ALTER TABLE venta
+    ADD COLUMN IF NOT EXISTS envio_correo VARCHAR(150),
+    ADD COLUMN IF NOT EXISTS entrega_punto_nombre VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS entrega_punto_direccion TEXT,
+    ADD COLUMN IF NOT EXISTS entrega_punto_horario VARCHAR(100);
+
+-- Las ventas anteriores a este cambio se quedan con los datos que tiene hoy su punto.
+UPDATE venta v
+SET entrega_punto_nombre = pe.nombrepunto,
+    entrega_punto_direccion = pe.direccioncompleta,
+    entrega_punto_horario = pe.horarioatencion
+FROM puntoentrega pe
+WHERE pe.idpunto = v.idpunto AND v.entrega_punto_nombre IS NULL;
+
 -- El flujo cambió de "Listo para recoger" a "En preparación" / "En tránsito".
 UPDATE venta SET estadopedido = 'En preparación' WHERE upper(estadopedido) = 'LISTO PARA RECOGER';
 
 -- LEFT JOIN: los pedidos enviados a domicilio no tienen punto de entrega.
+-- El nombre y la dirección salen de la copia guardada en la venta, no del punto actual.
 CREATE OR REPLACE VIEW vw_historial_ventas AS
 SELECT
     V."idventa",
@@ -484,8 +501,8 @@ SELECT
     V."fecha",
     V."totalventa",
     V."estadopedido",
-    PE."nombrepunto",
-    PE."direccioncompleta",
+    COALESCE(V."entrega_punto_nombre", PE."nombrepunto") AS "nombrepunto",
+    COALESCE(V."entrega_punto_direccion", PE."direccioncompleta") AS "direccioncompleta",
     json_agg(
         json_build_object(
             'iddetalle', DV."iddetalle",

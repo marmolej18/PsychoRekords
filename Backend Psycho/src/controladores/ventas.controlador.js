@@ -45,8 +45,25 @@ const validarEnvio = (envio) => {
 };
 
 /**
- * Resuelve cómo se entrega la venta: en un punto medio (gratis, sin dirección) o a domicilio
- * con una tarifa fija. Devuelve los datos a guardar en la venta o { status, message } si no es válido.
+ * Datos de contacto obligatorios para entregar en un punto medio: con ellos la tienda coordina
+ * con el cliente, y las referencias dicen cómo reconocerlo al entregar el disco.
+ */
+const validarContactoPunto = (envio) => {
+    const texto = (campo) => (typeof envio?.[campo] === 'string' ? envio[campo].trim() : '');
+    const telefono = texto('telefono').replace(/[\s-]/g, '');
+    const correo = texto('correo');
+    const referencias = texto('referencias');
+    if (!/^\d{10}$/.test(telefono)) return { error: 'El teléfono debe tener 10 dígitos.' };
+    if (correo.length > 150 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) return { error: 'El correo electrónico no es válido.' };
+    if (!referencias) return { error: 'Las referencias son obligatorias para entregar en el punto medio.' };
+    if (referencias.length > 300) return { error: 'Las referencias exceden 300 caracteres.' };
+    return { valores: { envio_telefono: telefono, envio_correo: correo, envio_referencias: referencias } };
+};
+
+/**
+ * Resuelve cómo se entrega la venta: en un punto medio (gratis) o a domicilio con una tarifa fija.
+ * Devuelve las columnas a guardar en la venta, con una copia de la entrega para que el historial
+ * no cambie si después se editan los puntos o las tarifas; o { status, message } si no es válido.
  */
 const resolverEntrega = async ({ idpunto, idtarifa, envio }) => {
     const id = Number(idpunto ?? idtarifa);
@@ -54,9 +71,19 @@ const resolverEntrega = async ({ idpunto, idtarifa, envio }) => {
         return { status: 400, message: 'Elige un punto de entrega o una tarifa de envío a domicilio.' };
     }
     if (idpunto != null) {
-        const punto = await db.query('SELECT idpunto FROM puntoentrega WHERE idpunto = $1 AND activo', [id]);
+        const contacto = validarContactoPunto(envio);
+        if (contacto.error) return { status: 400, message: contacto.error };
+        const punto = await db.query(`
+            SELECT nombrepunto, direccioncompleta, horarioatencion
+            FROM puntoentrega WHERE idpunto = $1 AND activo`, [id]);
         if (!punto.rows.length) return { status: 400, message: 'El punto de entrega no está disponible.' };
-        return { idpunto: id, paqueteria: null, servicio: null, costo: 0, direccion: CAMPOS_ENVIO.map(() => null) };
+        const { nombrepunto, direccioncompleta, horarioatencion } = punto.rows[0];
+        return { columnas: {
+            idpunto: id, costo_envio: 0, ...contacto.valores,
+            entrega_punto_nombre: nombrepunto,
+            entrega_punto_direccion: direccioncompleta,
+            entrega_punto_horario: horarioatencion,
+        } };
     }
     const direccion = validarEnvio(envio);
     if (direccion.error) return { status: 400, message: direccion.error };
@@ -64,7 +91,10 @@ const resolverEntrega = async ({ idpunto, idtarifa, envio }) => {
         'SELECT paqueteria, servicio, precio FROM tarifaenvio WHERE idtarifa = $1 AND activo', [id]);
     if (!tarifa.rows.length) return { status: 400, message: 'La tarifa de envío no está disponible.' };
     const { paqueteria, servicio, precio } = tarifa.rows[0];
-    return { idpunto: null, paqueteria, servicio, costo: Number(precio), direccion: direccion.valores };
+    const columnasDireccion = Object.fromEntries(CAMPOS_ENVIO.map(([, columna], i) => [columna, direccion.valores[i]]));
+    return { columnas: {
+        paqueteria, servicio_envio: servicio, costo_envio: Number(precio), ...columnasDireccion,
+    } };
 };
 
 const crearVenta = async (req, res) => {
@@ -111,16 +141,16 @@ const crearVenta = async (req, res) => {
         // Calcular el total de la venta
         const totalVenta = productos.reduce((sum, item) => sum + (item.cantidad * item.precioUnitario), 0);
 
-        // 2. Insertar en la tabla Venta, con una copia de la entrega elegida (HU7.1)
-        const columnasEnvio = CAMPOS_ENVIO.map(([, columna]) => columna);
+        // 2. Insertar en la tabla Venta, con una copia de la entrega elegida (HU7.1).
+        // Los nombres de columna salen de resolverEntrega (fijos en el código), nunca del body.
+        const datosVenta = { idusuario, totalventa: totalVenta, estadopedido: 'Pagado', ...entrega.columnas };
+        const columnas = Object.keys(datosVenta);
         const ventaQuery = `
-            INSERT INTO "venta" ("idusuario", "idpunto", "totalventa", "estadopedido",
-                "paqueteria", "servicio_envio", "costo_envio", ${columnasEnvio.join(', ')})
-            VALUES ($1, $2, $3, 'Pagado', $4, $5, $6, ${columnasEnvio.map((_, i) => '$' + (i + 7)).join(', ')})
+            INSERT INTO "venta" (${columnas.map(c => `"${c}"`).join(', ')})
+            VALUES (${columnas.map((_, i) => '$' + (i + 1)).join(', ')})
             RETURNING "idventa", "fecha"`; // RETURNING nos da el ID y la fecha generados
 
-        const resultVenta = await client.query(ventaQuery, [idusuario, entrega.idpunto, totalVenta,
-            entrega.paqueteria, entrega.servicio, entrega.costo, ...entrega.direccion]);
+        const resultVenta = await client.query(ventaQuery, Object.values(datosVenta));
         const idVenta = resultVenta.rows[0].idventa;
         const fechaVenta = resultVenta.rows[0].fecha;
 
@@ -275,14 +305,18 @@ const cancelarVenta = async (req, res) => {
 
 // Columnas de envío y rastreo que se devuelven junto con cada venta.
 const columnasEnvioRastreo = `v.envio_destinatario, v.envio_telefono, v.envio_calle, v.envio_numero,
-           v.envio_colonia, v.envio_cp, v.envio_ciudad, v.envio_estado, v.envio_referencias,
+           v.envio_colonia, v.envio_cp, v.envio_ciudad, v.envio_estado, v.envio_referencias, v.envio_correo,
            v.paqueteria, v.servicio_envio, v.costo_envio::float AS costo_envio, v.numero_guia`;
+
+// Datos del punto medio: la copia guardada en la venta; el JOIN solo cubre ventas sin copia.
+const columnasPunto = `COALESCE(v.entrega_punto_nombre, pe.nombrepunto) AS nombrepunto,
+           COALESCE(v.entrega_punto_direccion, pe.direccioncompleta) AS direccioncompleta,
+           COALESCE(v.entrega_punto_horario, pe.horarioatencion) AS horarioatencion`;
 
 const consultaVentas = `
     SELECT v.idventa, v.fecha, v.totalventa, v.estadopedido,
            concat_ws(' ', u.nombre, u.apellidop, u.apellidom) AS cliente,
-           u.correoelectronico AS correo, pe.nombrepunto,
-           pe.direccioncompleta, ${columnasEnvioRastreo}
+           u.correoelectronico AS correo, ${columnasPunto}, ${columnasEnvioRastreo}
     FROM venta v
     LEFT JOIN usuario u ON u.idusuario = v.idusuario
     LEFT JOIN puntoentrega pe ON pe.idpunto = v.idpunto`;
@@ -380,7 +414,7 @@ const getMisPedidos = async (req, res) => {
         // Las cantidades negativas corresponden a ajustes de cancelación, no al pedido original.
         const result = await db.query(`
             SELECT v.idventa, v.fecha, v.totalventa, v.estadopedido,
-                   pe.nombrepunto, pe.direccioncompleta, pe.horarioatencion, ${columnasEnvioRastreo},
+                   ${columnasPunto}, ${columnasEnvioRastreo},
                    COALESCE((SELECT json_agg(json_build_object(
                        'iddetalle', dv.iddetalle, 'titulo', p.titulo, 'artista', p.artista,
                        'cantidad', dv.cantidad, 'precioUnitario', dv.preciounitario) ORDER BY dv.iddetalle)

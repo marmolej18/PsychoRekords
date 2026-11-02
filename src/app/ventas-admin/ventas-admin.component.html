@@ -95,6 +95,12 @@
                 @if (venta.envio_referencias) { <p class="text-muted small mb-1">Referencias: {{ venta.envio_referencias }}</p> }
               } @else {
                 <h3>Punto medio de entrega</h3><p class="fw-bold">{{ venta.nombrepunto || 'Sin información' }} <span class="badge bg-success">Gratis</span></p><p>{{ venta.direccioncompleta }}</p>
+                @if (venta.envio_telefono || venta.envio_correo) {
+                  <h3 class="mt-3">Contacto para la entrega</h3>
+                  @if (venta.envio_telefono) { <p class="mb-1">Tel. {{ venta.envio_telefono }}</p> }
+                  @if (venta.envio_correo) { <p class="mb-1">{{ venta.envio_correo }}</p> }
+                  @if (venta.envio_referencias) { <p class="text-muted small mb-1">Referencias: {{ venta.envio_referencias }}</p> }
+                }
               }
               @if (venta.numero_guia) {
                 <h3 class="mt-3">Rastreo</h3>

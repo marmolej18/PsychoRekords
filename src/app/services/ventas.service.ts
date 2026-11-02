@@ -41,13 +41,20 @@ export interface DireccionEnvio {
   referencias?: string;
 }
 
-// Interfaz para el Body de la Transacción: punto medio (idpunto) o envío a domicilio (idtarifa + envio)
+// Contacto obligatorio para entregar en un punto medio
+export interface ContactoPunto {
+  telefono: string;
+  correo: string;
+  referencias: string;
+}
+
+// Interfaz para el Body de la Transacción: punto medio (idpunto + contacto) o a domicilio (idtarifa + dirección)
 export interface VentaDTO {
   idusuario: number;
   idpunto?: number;
   idtarifa?: number;
   productos: DetalleVentaDTO[];
-  envio?: DireccionEnvio;
+  envio: DireccionEnvio | ContactoPunto;
 }
 
 // Interface para el producto dentro de una venta
@@ -81,6 +88,7 @@ export interface Venta {
   envio_ciudad?: string | null;
   envio_estado?: string | null;
   envio_referencias?: string | null;
+  envio_correo?: string | null;
   // Envío elegido por el cliente (paquetería y servicio vacíos si recoge en un punto medio)
   paqueteria?: string | null;
   servicio_envio?: string | null;

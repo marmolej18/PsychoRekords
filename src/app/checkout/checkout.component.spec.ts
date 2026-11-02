@@ -41,19 +41,36 @@ describe('CheckoutComponent', () => {
         colonia: 'Centro', cp: '20000', ciudad: 'Aguascalientes', estado: 'Aguascalientes'
     };
 
-    it('debería iniciar el formulario inválido hasta capturar la dirección de envío', () => {
+    it('debería iniciar inválido hasta elegir cómo recibir el pedido', () => {
         expect(component.checkoutForm.valid).toBeFalse();
-        component.checkoutForm.patchValue(direccion);
+        component.checkoutForm.patchValue({ entrega: 'punto-2' });
         expect(component.checkoutForm.valid).toBeTrue();
-        component.checkoutForm.patchValue({ cp: '2000' });
+    });
+
+    it('en punto medio no pide dirección y el envío es gratis', () => {
+        component.checkoutForm.patchValue({ entrega: 'punto-2' });
+        expect(component.esDomicilio).toBeFalse();
+        expect(component.checkoutForm.get('direccion')!.disabled).toBeTrue();
+        expect(component.costoEnvio).toBe(0);
+    });
+
+    it('a domicilio pide la dirección y cobra la tarifa elegida', () => {
+        component.tarifas = [{ idtarifa: 3, paqueteria: 'DHL', servicio: 'Nacional Económico', precio: 216, dias_min: 2, dias_max: 5 }];
+        component.checkoutForm.patchValue({ entrega: 'tarifa-3' });
+        expect(component.esDomicilio).toBeTrue();
+        expect(component.costoEnvio).toBe(216);
         expect(component.checkoutForm.valid).toBeFalse();
-        component.checkoutForm.patchValue({ cp: '20000', telefono: '12345' });
+        component.checkoutForm.patchValue({ direccion });
+        expect(component.checkoutForm.valid).toBeTrue();
+        component.checkoutForm.patchValue({ direccion: { cp: '2000' } });
+        expect(component.checkoutForm.valid).toBeFalse();
+        component.checkoutForm.patchValue({ direccion: { cp: '20000', telefono: '12345' } });
         expect(component.checkoutForm.valid).toBeFalse();
     });
 
     it('no debería confirmar la compra si no se completó el pago de PayPal', async () => {
         // Arrange
-        component.checkoutForm.patchValue(direccion);
+        component.checkoutForm.patchValue({ entrega: 'punto-2' });
         // Act
         await component.confirmarCompra();
         // Assert

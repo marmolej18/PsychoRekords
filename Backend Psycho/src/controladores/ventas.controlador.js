@@ -44,12 +44,41 @@ const validarEnvio = (envio) => {
     return { valores };
 };
 
-const crearVenta = async (req, res) => {
-    const { idusuario, idpunto, productos, envio } = req.body;
-
+/**
+ * Resuelve cómo se entrega la venta: en un punto medio (gratis, sin dirección) o a domicilio
+ * con una tarifa fija. Devuelve los datos a guardar en la venta o { status, message } si no es válido.
+ */
+const resolverEntrega = async ({ idpunto, idtarifa, envio }) => {
+    const id = Number(idpunto ?? idtarifa);
+    if ((idpunto == null) === (idtarifa == null) || !Number.isSafeInteger(id) || id <= 0) {
+        return { status: 400, message: 'Elige un punto de entrega o una tarifa de envío a domicilio.' };
+    }
+    if (idpunto != null) {
+        const punto = await db.query('SELECT idpunto FROM puntoentrega WHERE idpunto = $1 AND activo', [id]);
+        if (!punto.rows.length) return { status: 400, message: 'El punto de entrega no está disponible.' };
+        return { idpunto: id, paqueteria: null, servicio: null, costo: 0, direccion: CAMPOS_ENVIO.map(() => null) };
+    }
     const direccion = validarEnvio(envio);
-    if (direccion.error) {
-        return res.status(400).json({ message: direccion.error });
+    if (direccion.error) return { status: 400, message: direccion.error };
+    const tarifa = await db.query(
+        'SELECT paqueteria, servicio, precio FROM tarifaenvio WHERE idtarifa = $1 AND activo', [id]);
+    if (!tarifa.rows.length) return { status: 400, message: 'La tarifa de envío no está disponible.' };
+    const { paqueteria, servicio, precio } = tarifa.rows[0];
+    return { idpunto: null, paqueteria, servicio, costo: Number(precio), direccion: direccion.valores };
+};
+
+const crearVenta = async (req, res) => {
+    const { idusuario, productos } = req.body;
+
+    let entrega;
+    try {
+        entrega = await resolverEntrega(req.body);
+    } catch (error) {
+        console.error('Error al validar la entrega:', error);
+        return res.status(500).json({ message: 'No se pudo validar la forma de entrega.' });
+    }
+    if (entrega.status) {
+        return res.status(entrega.status).json({ message: entrega.message });
     }
 
     // pre validacion de stock usando funcion
@@ -82,14 +111,16 @@ const crearVenta = async (req, res) => {
         // Calcular el total de la venta
         const totalVenta = productos.reduce((sum, item) => sum + (item.cantidad * item.precioUnitario), 0);
 
-        // 2. Insertar en la tabla Venta, con una copia de la dirección de envío (HU7.1)
+        // 2. Insertar en la tabla Venta, con una copia de la entrega elegida (HU7.1)
         const columnasEnvio = CAMPOS_ENVIO.map(([, columna]) => columna);
         const ventaQuery = `
-            INSERT INTO "venta" ("idusuario", "idpunto", "totalventa", "estadopedido", ${columnasEnvio.join(', ')})
-            VALUES ($1, $2, $3, 'Pagado', ${columnasEnvio.map((_, i) => '$' + (i + 4)).join(', ')})
+            INSERT INTO "venta" ("idusuario", "idpunto", "totalventa", "estadopedido",
+                "paqueteria", "servicio_envio", "costo_envio", ${columnasEnvio.join(', ')})
+            VALUES ($1, $2, $3, 'Pagado', $4, $5, $6, ${columnasEnvio.map((_, i) => '$' + (i + 7)).join(', ')})
             RETURNING "idventa", "fecha"`; // RETURNING nos da el ID y la fecha generados
 
-        const resultVenta = await client.query(ventaQuery, [idusuario, idpunto ?? null, totalVenta, ...direccion.valores]);
+        const resultVenta = await client.query(ventaQuery, [idusuario, entrega.idpunto, totalVenta,
+            entrega.paqueteria, entrega.servicio, entrega.costo, ...entrega.direccion]);
         const idVenta = resultVenta.rows[0].idventa;
         const fechaVenta = resultVenta.rows[0].fecha;
 
@@ -245,7 +276,7 @@ const cancelarVenta = async (req, res) => {
 // Columnas de envío y rastreo que se devuelven junto con cada venta.
 const columnasEnvioRastreo = `v.envio_destinatario, v.envio_telefono, v.envio_calle, v.envio_numero,
            v.envio_colonia, v.envio_cp, v.envio_ciudad, v.envio_estado, v.envio_referencias,
-           v.paqueteria, v.numero_guia`;
+           v.paqueteria, v.servicio_envio, v.costo_envio::float AS costo_envio, v.numero_guia`;
 
 const consultaVentas = `
     SELECT v.idventa, v.fecha, v.totalventa, v.estadopedido,
@@ -370,14 +401,17 @@ const getMisPedidos = async (req, res) => {
     }
 };
 
-// Flujo de un pedido enviado por paquetería (HU7.2). La cancelación va aparte, por sp_cancelar_venta.
+// Flujo de un pedido (HU7.2). En un punto medio, "En tránsito" significa que va en camino al punto.
+// La cancelación va aparte, por sp_cancelar_venta.
 const ETAPAS_PEDIDO = ['Pagado', 'En preparación', 'En tránsito', 'Entregado'];
 const PAQUETERIAS = ['DHL', 'Estafeta', 'Correos de México'];
 
 /**
  * PUT /api/ventas/estado/:idventa - Avanza el pedido a la siguiente etapa (Admin).
  * Body: { "estado": "En preparación" }
- * Para pasar a "En tránsito" también se requiere: { "paqueteria": "DHL", "numeroGuia": "1234567890" }
+ * Si es envío a domicilio, para pasar a "En tránsito" se requiere { "numeroGuia": "1234567890" }.
+ * La paquetería es la que eligió el cliente; "paqueteria" en el body solo aplica si la venta no tiene una.
+ * Las entregas en punto medio no llevan guía.
  */
 const avanzarEstadoVenta = async (req, res) => {
     const idventa = Number(req.params.idventa);
@@ -390,21 +424,27 @@ const avanzarEstadoVenta = async (req, res) => {
         return res.status(400).json({ message: 'El estado solicitado no es válido.' });
     }
 
-    // Al salir a paquetería se guardan los datos de rastreo; en las demás etapas no se tocan.
-    let paqueteria = null;
-    let numeroGuia = null;
-    if (estado === 'En tránsito') {
-        paqueteria = req.body.paqueteria;
-        numeroGuia = typeof req.body.numeroGuia === 'string' ? req.body.numeroGuia.trim().toUpperCase() : '';
-        if (!PAQUETERIAS.includes(paqueteria)) {
-            return res.status(400).json({ message: `La paquetería debe ser una de: ${PAQUETERIAS.join(', ')}.` });
-        }
-        if (!/^[A-Z0-9-]{6,40}$/.test(numeroGuia)) {
-            return res.status(400).json({ message: 'El número de guía debe tener de 6 a 40 letras o números.' });
-        }
-    }
-
     try {
+        // Al salir a paquetería se guardan los datos de rastreo; en las demás etapas no se tocan.
+        let paqueteria = null;
+        let numeroGuia = null;
+        if (estado === 'En tránsito') {
+            const venta = await db.query('SELECT idpunto, paqueteria FROM venta WHERE idventa = $1', [idventa]);
+            if (!venta.rows.length) {
+                return res.status(404).json({ message: 'La venta no existe.' });
+            }
+            if (venta.rows[0].idpunto == null) {
+                paqueteria = venta.rows[0].paqueteria ?? req.body.paqueteria;
+                numeroGuia = typeof req.body.numeroGuia === 'string' ? req.body.numeroGuia.trim().toUpperCase() : '';
+                if (!PAQUETERIAS.includes(paqueteria)) {
+                    return res.status(400).json({ message: `La paquetería debe ser una de: ${PAQUETERIAS.join(', ')}.` });
+                }
+                if (!/^[A-Z0-9-]{6,40}$/.test(numeroGuia)) {
+                    return res.status(400).json({ message: 'El número de guía debe tener de 6 a 40 letras o números.' });
+                }
+            }
+        }
+
         // Solo avanza si el pedido está justo en la etapa anterior: evita saltos, retrocesos y dobles clics.
         const result = await db.query(`
             UPDATE venta SET estadopedido = $1,

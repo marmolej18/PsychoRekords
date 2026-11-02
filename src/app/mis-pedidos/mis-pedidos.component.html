@@ -63,11 +63,14 @@
                 <div class="col-md-6">
                   @if (pedido.envio_calle) {
                     <h2 class="h6">Dirección de envío</h2>
+                    @if (pedido.paqueteria) {
+                      <p class="small text-muted mb-1">{{ pedido.paqueteria }} – {{ pedido.servicio_envio }} · {{ pedido.costo_envio | currency:'MXN':'$' }}</p>
+                    }
                     <p class="fw-bold mb-1">{{ pedido.envio_destinatario }}</p>
                     <p class="mb-1">{{ pedido.envio_calle }} {{ pedido.envio_numero }}, Col. {{ pedido.envio_colonia }}</p>
                     <p class="mb-0">C.P. {{ pedido.envio_cp }}, {{ pedido.envio_ciudad }}, {{ pedido.envio_estado }}</p>
                   } @else {
-                    <h2 class="h6">Punto de entrega</h2>
+                    <h2 class="h6">Punto medio de entrega</h2>
                     <p class="fw-bold mb-1">{{ pedido.nombrepunto || 'Sin información' }}</p>
                     @if (pedido.direccioncompleta) { <p class="mb-1">{{ pedido.direccioncompleta }}</p> }
                     @if (pedido.horarioatencion) { <p class="mb-0 text-muted small">Horario: {{ pedido.horarioatencion }}</p> }

@@ -95,28 +95,39 @@ export class VentasAdminComponent implements OnInit {
     return i >= 0 && i < ETAPAS_PEDIDO.length - 1 ? ETAPAS_PEDIDO[i + 1] : null;
   }
 
-  /** Al salir a paquetería hay que capturar la guía antes de avanzar. */
+  /** Envío a domicilio (tiene dirección); si no, se entrega en un punto medio. */
+  esDomicilio(venta: Venta): boolean {
+    return !!venta.envio_calle;
+  }
+
+  /** Al salir a paquetería hay que capturar la guía; los puntos medios no la necesitan. */
   requiereGuia(venta: Venta): boolean {
-    return this.siguienteEtapa(venta) === 'En tránsito';
+    return this.siguienteEtapa(venta) === 'En tránsito' && this.esDomicilio(venta);
   }
 
   avanzarEstado(venta: Venta): void {
     const estado = this.siguienteEtapa(venta);
     if (!estado) return;
     const guia = this.numeroGuia.trim();
-    if (this.requiereGuia(venta) && (!this.paqueteria || !guia)) {
-      this.errorDetalle = 'Selecciona la paquetería y escribe el número de guía.';
+    // La paquetería la eligió el cliente; solo se pide si la venta no la tiene.
+    const paqueteria = venta.paqueteria || this.paqueteria;
+    if (this.requiereGuia(venta) && (!paqueteria || !guia)) {
+      this.errorDetalle = venta.paqueteria ? 'Escribe el número de guía.' : 'Selecciona la paquetería y escribe el número de guía.';
       return;
     }
     if (!confirm(`¿Marcar el pedido #${venta.idventa} como "${estado}"?`)) return;
     this.actualizando = true;
     this.errorDetalle = '';
     this.mensajeEstado = '';
-    const rastreo = this.requiereGuia(venta) ? { paqueteria: this.paqueteria, numeroGuia: guia } : undefined;
+    const rastreo = this.requiereGuia(venta) ? { paqueteria, numeroGuia: guia } : undefined;
     this.ventasService.actualizarEstado(venta.idventa, estado, rastreo).subscribe({
       next: r => {
         for (const v of [venta, this.ventas.find(f => f.idventa === venta.idventa)]) {
-          if (v) { v.estadopedido = r.estadopedido; v.paqueteria = r.paqueteria; v.numero_guia = r.numero_guia; }
+          if (v) {
+            v.estadopedido = r.estadopedido;
+            v.paqueteria = r.paqueteria ?? v.paqueteria;
+            v.numero_guia = r.numero_guia ?? v.numero_guia;
+          }
         }
         this.mensajeEstado = `Pedido #${venta.idventa} marcado como "${r.estadopedido}".`;
         this.paqueteria = '';

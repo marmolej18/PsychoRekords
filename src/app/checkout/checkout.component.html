@@ -21,38 +21,64 @@
 
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-secondary text-white">
-                        <h5>1. Seleccionar Punto de Entrega</h5>
+                        <h5>1. Dirección de Envío</h5>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted">Selecciona dónde deseas recoger tu pedido. El costo de envío fijo de
-                            $80.00 aplica a cualquier punto.</p>
+                        <p class="text-muted">Enviamos tu pedido por paquetería (DHL, Estafeta o Correos de México).
+                            Tomamos la dirección de tu perfil; puedes cambiarla solo para este pedido. El costo de
+                            envío fijo es de $80.00.</p>
 
-                        @if (puntosEntrega$ | async; as puntos) {
                         <div class="row g-3">
-                            @for (punto of puntos; track punto.idpunto) {
-                            <div class="col-md-6">
-                                <div class="card h-100 p-3"
-                                    [ngClass]="{'border-primary shadow-sm': f['idpunto'].value === punto.idpunto}">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="idpunto"
-                                            [id]="'punto'+punto.idpunto" [value]="punto.idpunto"
-                                            formControlName="idpunto">
-                                        <label class="form-check-label w-100" [for]="'punto'+punto.idpunto">
-                                            <strong class="d-block">{{ punto.nombrepunto }}</strong>
-                                            <span class="small text-muted">{{ punto.direccioncompleta }}</span>
-                                            <span class="d-block small mt-1">Horario: {{ punto.horarioatencion }}</span>
-                                        </label>
-                                    </div>
-                                </div>
+                            <div class="col-md-8">
+                                <label class="form-label" for="destinatario">Nombre de quien recibe</label>
+                                <input id="destinatario" class="form-control" formControlName="destinatario"
+                                    [class.is-invalid]="f['destinatario'].invalid && f['destinatario'].touched">
                             </div>
-                            } @empty {
-                            <div class="alert alert-warning">No hay puntos de entrega disponibles.</div>
-                            }
+                            <div class="col-md-4">
+                                <label class="form-label" for="telefono">Teléfono (10 dígitos)</label>
+                                <input id="telefono" class="form-control" formControlName="telefono" inputmode="numeric"
+                                    maxlength="10" [class.is-invalid]="f['telefono'].invalid && f['telefono'].touched">
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label" for="calle">Calle</label>
+                                <input id="calle" class="form-control" formControlName="calle"
+                                    [class.is-invalid]="f['calle'].invalid && f['calle'].touched">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="numero">Número</label>
+                                <input id="numero" class="form-control" formControlName="numero"
+                                    [class.is-invalid]="f['numero'].invalid && f['numero'].touched">
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label" for="colonia">Colonia</label>
+                                <input id="colonia" class="form-control" formControlName="colonia"
+                                    [class.is-invalid]="f['colonia'].invalid && f['colonia'].touched">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="cp">Código postal</label>
+                                <input id="cp" class="form-control" formControlName="cp" inputmode="numeric"
+                                    maxlength="5" [class.is-invalid]="f['cp'].invalid && f['cp'].touched">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="ciudad">Ciudad</label>
+                                <input id="ciudad" class="form-control" formControlName="ciudad"
+                                    [class.is-invalid]="f['ciudad'].invalid && f['ciudad'].touched">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="estado">Estado</label>
+                                <input id="estado" class="form-control" formControlName="estado"
+                                    [class.is-invalid]="f['estado'].invalid && f['estado'].touched">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="referencias">Referencias (opcional)</label>
+                                <input id="referencias" class="form-control" formControlName="referencias"
+                                    placeholder="Ej. Casa azul, entre calles X y Y">
+                            </div>
                         </div>
-                        }
 
-                        @if (f['idpunto'].invalid && f['idpunto'].touched) {
-                        <div class="alert alert-danger mt-3 small p-2">Debes seleccionar un punto de entrega.</div>
+                        @if (checkoutForm.invalid && checkoutForm.touched) {
+                        <div class="alert alert-danger mt-3 small p-2">Revisa los campos marcados: el teléfono lleva 10
+                            dígitos y el código postal 5.</div>
                         }
                     </div>
                 </div>

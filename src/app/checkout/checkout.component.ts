@@ -5,7 +5,7 @@ import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { CarritoService } from '../services/carrito.service';
 import { AuthService } from '../services/auth.service';
-import { VentasService, PuntoEntrega, DetalleVentaDTO, VentaDTO } from '../services/ventas.service';
+import { VentasService, DetalleVentaDTO, DireccionEnvio, VentaDTO } from '../services/ventas.service';
 import { combineLatest, Observable, Subscription } from 'rxjs';
 import { map } from 'rxjs/operators';
 
@@ -21,7 +21,6 @@ declare let paypal: any;
 export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
 
   checkoutForm!: FormGroup;
-  puntosEntrega$ = new Observable<PuntoEntrega[]>();
 
   // Data del resumen (combinada)
   resumenVenta$ = new Observable<any>();
@@ -46,11 +45,18 @@ export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
   ) { }
 
   ngOnInit(): void {
-    // 1. Inicializar formulario (solo necesitamos la selección del punto).
+    // 1. Inicializar formulario con la dirección de envío (HU7.1).
     // Va antes de la validación: si se redirige, el template se alcanza a renderizar y necesita el FormGroup.
     this.checkoutForm = this.fb.group({
-      idpunto: ['', Validators.required],
-      // Aquí se podría añadir un checkbox de "Aceptar términos y condiciones"
+      destinatario: ['', [Validators.required, Validators.maxLength(150)]],
+      telefono: ['', [Validators.required, Validators.pattern(/^\d{10}$/)]],
+      calle: ['', [Validators.required, Validators.maxLength(100)]],
+      numero: ['', [Validators.required, Validators.maxLength(20)]],
+      colonia: ['', [Validators.required, Validators.maxLength(100)]],
+      cp: ['', [Validators.required, Validators.pattern(/^\d{5}$/)]],
+      ciudad: ['', [Validators.required, Validators.maxLength(50)]],
+      estado: ['', [Validators.required, Validators.maxLength(50)]],
+      referencias: ['', Validators.maxLength(300)],
     });
 
     // 2. Verificar si el usuario está logueado y si el carrito no está vacío
@@ -59,8 +65,23 @@ export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    // 3. Cargar Puntos de Entrega
-    this.puntosEntrega$ = this.ventasService.getPuntosEntrega();
+    // 3. Prellenar con la dirección del perfil; el cliente puede cambiarla solo para este pedido.
+    this.authService.getUserById(Number(this.authService.getAuthHeader())).subscribe({
+      next: (perfil: any) => {
+        const valor = (v: unknown) => (typeof v === 'string' ? v : '');
+        this.checkoutForm.patchValue({
+          destinatario: [perfil.nombre, perfil.apellidop, perfil.apellidom].filter(Boolean).join(' '),
+          telefono: valor(perfil.telefono).replace(/\D/g, ''),
+          calle: valor(perfil.calle),
+          numero: valor(perfil.numcasa),
+          colonia: valor(perfil.colonia),
+          cp: valor(perfil.cp),
+          ciudad: valor(perfil.ciudad),
+          estado: valor(perfil.estado),
+        });
+      },
+      error: () => { /* Sin perfil: el cliente captura la dirección a mano. */ }
+    });
 
     // 4. Combinar datos del carrito para el resumen (reutilizando lógica del CarritoComponent)
     this.resumenVenta$ = combineLatest([this.carritoService.items$, this.carritoService.getSubtotal()])
@@ -131,7 +152,7 @@ export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (this.checkoutForm.invalid) {
       this.checkoutForm.markAllAsTouched();
-      this.errorMessage = 'Por favor, selecciona un Punto de Entrega.';
+      this.errorMessage = 'Por favor, completa correctamente la dirección de envío.';
       return;
     }
 
@@ -142,7 +163,7 @@ export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const currentItems = this.carritoService.getItems();
     const idUsuario = Number(this.authService.getAuthHeader()); // idUsuario como número
-    const idPunto = this.checkoutForm.get('idpunto')?.value;
+    const envio: DireccionEnvio = this.checkoutForm.value;
 
     if (!currentItems || currentItems.length === 0) {
       this.errorMessage = 'El carrito está vacío. No se puede procesar la compra.';
@@ -161,8 +182,8 @@ export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const ventaData: VentaDTO = {
       idusuario: idUsuario,
-      idpunto: idPunto,
       productos: productos,
+      envio,
     };
 
     // 2. Llamada al servicio para crear la venta (transacción)

@@ -415,3 +415,57 @@ END;
 $$ LANGUAGE plpgsql;
 
 
+-- --- ENVÍOS POR PAQUETERÍA (HU7.1 / HU7.2) ---
+-- Se puede correr sobre una base existente: solo agrega lo que falte.
+
+-- Dirección de envío congelada en la venta: no cambia aunque el cliente edite su perfil después.
+ALTER TABLE venta
+    ADD COLUMN IF NOT EXISTS envio_destinatario VARCHAR(150),
+    ADD COLUMN IF NOT EXISTS envio_telefono VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS envio_calle VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS envio_numero VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS envio_colonia VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS envio_cp VARCHAR(10),
+    ADD COLUMN IF NOT EXISTS envio_ciudad VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS envio_estado VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS envio_referencias TEXT,
+    -- Datos de rastreo: se capturan cuando el pedido pasa a "En tránsito".
+    ADD COLUMN IF NOT EXISTS paqueteria VARCHAR(30),
+    ADD COLUMN IF NOT EXISTS numero_guia VARCHAR(40);
+
+-- Los pedidos nuevos se envían a domicilio; el punto de entrega queda solo para los pedidos anteriores.
+ALTER TABLE venta ALTER COLUMN idpunto DROP NOT NULL;
+
+-- El flujo cambió de "Listo para recoger" a "En preparación" / "En tránsito".
+UPDATE venta SET estadopedido = 'En preparación' WHERE upper(estadopedido) = 'LISTO PARA RECOGER';
+
+-- LEFT JOIN: los pedidos enviados a domicilio no tienen punto de entrega.
+CREATE OR REPLACE VIEW vw_historial_ventas AS
+SELECT
+    V."idventa",
+    V."idusuario",
+    V."fecha",
+    V."totalventa",
+    V."estadopedido",
+    PE."nombrepunto",
+    PE."direccioncompleta",
+    json_agg(
+        json_build_object(
+            'iddetalle', DV."iddetalle",
+            'titulo', P."titulo",
+            'artista', P."artista",
+            'cantidad', DV."cantidad",
+            'precioUnitario', DV."preciounitario"
+        )
+    ) AS detalles
+FROM "venta" V
+LEFT JOIN "puntoentrega" PE ON V."idpunto" = PE."idpunto"
+JOIN "detalleventa" DV ON V."idventa" = DV."idventa"
+JOIN "producto" P ON DV."idprod" = P."idprod"
+GROUP BY
+    V."idventa",
+    V."idusuario",
+    PE."idpunto"
+ORDER BY V."fecha" DESC;
+
+

@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import {
-  coincideFiltro, ETAPAS_PEDIDO, FILTROS_PEDIDO, FiltroPedidos, normalizarEstado as normalizar, Venta, VentasService
+  coincideFiltro, ETAPAS_PEDIDO, FILTROS_PEDIDO, FiltroPedidos, normalizarEstado as normalizar, urlRastreo, Venta, VentasService
 } from '../services/ventas.service';
 
 @Component({
@@ -18,6 +18,7 @@ export class MisPedidosComponent implements OnInit {
   // Las cancelaciones las hace el admin; el cliente las solicita por el WhatsApp del negocio (mismo enlace que el footer).
   readonly whatsappNegocio = 'https://wa.me/qr/DPZGF3WG5WBOJ1';
   readonly filtros = FILTROS_PEDIDO;
+  readonly urlRastreo = urlRastreo;
 
   pedidos: Venta[] = [];
   filtro: FiltroPedidos = 'todos';
@@ -62,6 +63,8 @@ export class MisPedidosComponent implements OnInit {
 
   esCancelado(pedido: Venta): boolean { return normalizar(pedido.estadopedido) === 'CANCELADO'; }
   esEntregado(pedido: Venta): boolean { return normalizar(pedido.estadopedido) === 'ENTREGADO'; }
+  // Ya salió a paquetería: el negocio no puede cancelarlo ni regresar el stock.
+  yaSalio(pedido: Venta): boolean { return ['EN TRANSITO', 'ENTREGADO'].includes(normalizar(pedido.estadopedido)); }
 
   /** Índice de la etapa actual del pedido (-1 si el estado no forma parte del flujo). */
   etapaActual(pedido: Venta): number {

@@ -36,15 +36,24 @@ describe('CheckoutComponent', () => {
         expect(component).toBeTruthy();
     });
 
-    it('debería iniciar el formulario inválido hasta elegir un punto de entrega', () => {
+    const direccion = {
+        destinatario: 'Ana López', telefono: '4491234567', calle: 'Av. Madero', numero: '123',
+        colonia: 'Centro', cp: '20000', ciudad: 'Aguascalientes', estado: 'Aguascalientes'
+    };
+
+    it('debería iniciar el formulario inválido hasta capturar la dirección de envío', () => {
         expect(component.checkoutForm.valid).toBeFalse();
-        component.checkoutForm.patchValue({ idpunto: 1 });
+        component.checkoutForm.patchValue(direccion);
         expect(component.checkoutForm.valid).toBeTrue();
+        component.checkoutForm.patchValue({ cp: '2000' });
+        expect(component.checkoutForm.valid).toBeFalse();
+        component.checkoutForm.patchValue({ cp: '20000', telefono: '12345' });
+        expect(component.checkoutForm.valid).toBeFalse();
     });
 
     it('no debería confirmar la compra si no se completó el pago de PayPal', async () => {
         // Arrange
-        component.checkoutForm.patchValue({ idpunto: 1 });
+        component.checkoutForm.patchValue(direccion);
         // Act
         await component.confirmarCompra();
         // Assert

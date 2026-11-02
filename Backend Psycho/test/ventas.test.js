@@ -49,6 +49,29 @@ test('listado ordenado y total numérico', async () => {
   assert.equal(r.body[0].totalventa, 550);
   assert.match(consultas[0].sql, /ORDER BY v.fecha DESC, v.idventa DESC/);
 });
+test('listado filtra por orden y rango de fechas con parámetros', async () => {
+  responder = async () => ({ rows: [] });
+  consultas = [];
+  assert.equal((await pedir('todas?idventa=5', '2', 'admin')).status, 200);
+  assert.match(consultas[0].sql, /WHERE v.idventa = \$1 ORDER BY/);
+  assert.deepEqual(consultas[0].params, [5]);
+  consultas = [];
+  assert.equal((await pedir('todas?desde=2026-10-01&hasta=2026-10-31', '2', 'admin')).status, 200);
+  assert.match(consultas[0].sql, /v.fecha >= \$1::date AND v.fecha < \$2::date \+ 1/);
+  assert.deepEqual(consultas[0].params, ['2026-10-01', '2026-10-31']);
+  consultas = [];
+  assert.equal((await pedir('todas', '2', 'admin')).status, 200);
+  assert.doesNotMatch(consultas[0].sql, /WHERE v\./);
+  assert.deepEqual(consultas[0].params, []);
+});
+test('listado rechaza filtros inválidos sin consultar la BD', async () => {
+  consultas = [];
+  for (const q of ['idventa=abc', 'idventa=0', 'idventa=1.5', 'desde=ayer', 'hasta=2026-02-30',
+    'desde=2026-10-31&hasta=2026-10-01']) {
+    assert.equal((await pedir('todas?' + q, '2', 'admin')).status, 400, q);
+  }
+  assert.equal(consultas.length, 0);
+});
 test('detalle incluye productos y usa parámetros', async () => {
   consultas = [];
   responder = async sql => ({ rows: sql.includes('FROM detalleventa') ? [{iddetalle:1,cantidad:2,precioUnitario:'275.00'}] : [{idventa:5,totalventa:'550.00'}] });
@@ -108,11 +131,24 @@ test('avanzar estado valida id y etapa destino', async () => {
 });
 test('avanza solo desde la etapa inmediata anterior', async () => {
   consultas = [];
-  responder = async () => ({ rows: [{ idventa: 5, estadopedido: 'Listo para recoger' }] });
-  const r = await pedir('estado/5', '2', 'admin', { estado: 'Listo para recoger' });
+  responder = async () => ({ rows: [{ idventa: 5, estadopedido: 'En preparación' }] });
+  const r = await pedir('estado/5', '2', 'admin', { estado: 'En preparación' });
   assert.equal(r.status, 200);
-  assert.equal(r.body.estadopedido, 'Listo para recoger');
-  assert.deepEqual(consultas[0].params, ['Listo para recoger', 5, 'Pagado']);
+  assert.equal(r.body.estadopedido, 'En preparación');
+  assert.deepEqual(consultas[0].params, ['En preparación', 5, 'Pagado', null, null]);
+});
+test('pasar a "En tránsito" exige paquetería y guía válidas', async () => {
+  consultas = [];
+  for (const body of [{}, { paqueteria: 'FedEx', numeroGuia: '1234567890' },
+    { paqueteria: 'DHL' }, { paqueteria: 'DHL', numeroGuia: '12' }, { paqueteria: 'DHL', numeroGuia: 'guía con espacios' }]) {
+    assert.equal((await pedir('estado/5', '2', 'admin', { estado: 'En tránsito', ...body })).status, 400, JSON.stringify(body));
+  }
+  assert.equal(consultas.length, 0);
+  responder = async () => ({ rows: [{ idventa: 5, estadopedido: 'En tránsito', paqueteria: 'DHL', numero_guia: 'AB12345678' }] });
+  const r = await pedir('estado/5', '2', 'admin', { estado: 'En tránsito', paqueteria: 'DHL', numeroGuia: ' ab12345678 ' });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.numero_guia, 'AB12345678');
+  assert.deepEqual(consultas[0].params, ['En tránsito', 5, 'En preparación', 'DHL', 'AB12345678']);
 });
 test('rechaza saltos de etapa y ventas inexistentes', async () => {
   responder = async sql => ({ rows: sql.startsWith('SELECT') ? [{ estadopedido: 'Pagado' }] : [] });
@@ -124,14 +160,37 @@ test('rechaza saltos de etapa y ventas inexistentes', async () => {
   responder = async () => { throw new Error('BD no disponible'); };
   assert.equal((await pedir('estado/5', '2', 'admin', { estado: 'Entregado' })).status, 500);
 });
-test('cancelar: solo admin y nunca un pedido entregado', async () => {
+test('cancelar: solo admin y nunca un pedido entregado ni en tránsito', async () => {
   assert.equal((await pedir('cancelar/5', '4', 'cliente', {})).status, 403);
   consultas = [];
   responder = async () => ({ rows: [{ estadopedido: 'Entregado' }] });
   const r = await pedir('cancelar/5', '2', 'admin', {});
   assert.equal(r.status, 409);
   assert.match(r.body.message, /ya fue entregado/);
+  responder = async () => ({ rows: [{ estadopedido: 'En tránsito' }] });
+  const enCamino = await pedir('cancelar/5', '2', 'admin', {});
+  assert.equal(enCamino.status, 409);
+  assert.match(enCamino.body.message, /ya va en camino/);
   assert.ok(!consultas.some(c => c.sql.includes('sp_cancelar_venta')));
+});
+test('crear venta exige una dirección de envío válida antes de tocar la BD', async () => {
+  const valida = { destinatario: 'Juan Pérez', telefono: '449 123 4567', calle: 'Av. Madero', numero: '123',
+    colonia: 'Centro', cp: '20000', ciudad: 'Aguascalientes', estado: 'Aguascalientes' };
+  const crear = async envio => {
+    const response = await fetch('http://127.0.0.1:' + server.address().port + '/api/ventas/', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${crearToken(4, 'cliente')}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idusuario: 4, productos: [{ idprod: 1, cantidad: 1, precioUnitario: 550 }], envio })
+    });
+    return { status: response.status, body: await response.json() };
+  };
+  consultas = [];
+  for (const envio of [undefined, { ...valida, calle: '  ' }, { ...valida, cp: '2000' },
+    { ...valida, telefono: '12345' }, { ...valida, referencias: 'x'.repeat(301) }]) {
+    assert.equal((await crear(envio)).status, 400, JSON.stringify(envio));
+  }
+  assert.match((await crear({ ...valida, cp: 'abcde' })).body.message, /código postal/);
+  assert.equal(consultas.length, 0);
 });
 test('cancelar llama al procedimiento y devuelve su motivo de error', async () => {
   consultas = [];

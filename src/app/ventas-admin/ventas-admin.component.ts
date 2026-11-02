@@ -1,19 +1,25 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import {
-  coincideFiltro, ETAPAS_PEDIDO, FILTROS_PEDIDO, FiltroPedidos, Venta, VentasService
+  coincideFiltro, ETAPAS_PEDIDO, FILTROS_PEDIDO, FiltroPedidos, normalizarEstado, PAQUETERIAS, urlRastreo, Venta, VentasService
 } from '../services/ventas.service';
 
 @Component({
   selector: 'app-ventas-admin',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './ventas-admin.component.html',
   styleUrl: './ventas-admin.component.css'
 })
 export class VentasAdminComponent implements OnInit {
   readonly filtros = FILTROS_PEDIDO;
+  readonly paqueterias = PAQUETERIAS.map(p => p.nombre);
+  readonly urlRastreo = urlRastreo;
   filtro: FiltroPedidos = 'todos';
+  // Datos de rastreo que el admin captura al marcar un pedido como "En tránsito"
+  paqueteria = '';
+  numeroGuia = '';
   ventas: Venta[] = [];
   seleccionada: Venta | null = null;
   cargando = false;
@@ -51,6 +57,8 @@ export class VentasAdminComponent implements OnInit {
     this.seleccionada = null;
     this.errorDetalle = '';
     this.mensajeEstado = '';
+    this.paqueteria = '';
+    this.numeroGuia = '';
     this.cargandoDetalle = true;
     this.ventasService.getDetalleVenta(idventa).subscribe({
       next: venta => {
@@ -83,22 +91,36 @@ export class VentasAdminComponent implements OnInit {
 
   /** Etapa a la que puede avanzar el pedido, o null si ya no tiene más (entregado, cancelado, etc.). */
   siguienteEtapa(venta: Venta): string | null {
-    const i = ETAPAS_PEDIDO.findIndex(e => e.toUpperCase() === venta.estadopedido?.toUpperCase());
+    const i = ETAPAS_PEDIDO.findIndex(e => normalizarEstado(e) === normalizarEstado(venta.estadopedido));
     return i >= 0 && i < ETAPAS_PEDIDO.length - 1 ? ETAPAS_PEDIDO[i + 1] : null;
+  }
+
+  /** Al salir a paquetería hay que capturar la guía antes de avanzar. */
+  requiereGuia(venta: Venta): boolean {
+    return this.siguienteEtapa(venta) === 'En tránsito';
   }
 
   avanzarEstado(venta: Venta): void {
     const estado = this.siguienteEtapa(venta);
-    if (!estado || !confirm(`¿Marcar el pedido #${venta.idventa} como "${estado}"?`)) return;
+    if (!estado) return;
+    const guia = this.numeroGuia.trim();
+    if (this.requiereGuia(venta) && (!this.paqueteria || !guia)) {
+      this.errorDetalle = 'Selecciona la paquetería y escribe el número de guía.';
+      return;
+    }
+    if (!confirm(`¿Marcar el pedido #${venta.idventa} como "${estado}"?`)) return;
     this.actualizando = true;
     this.errorDetalle = '';
     this.mensajeEstado = '';
-    this.ventasService.actualizarEstado(venta.idventa, estado).subscribe({
+    const rastreo = this.requiereGuia(venta) ? { paqueteria: this.paqueteria, numeroGuia: guia } : undefined;
+    this.ventasService.actualizarEstado(venta.idventa, estado, rastreo).subscribe({
       next: r => {
-        venta.estadopedido = r.estadopedido;
-        const fila = this.ventas.find(v => v.idventa === venta.idventa);
-        if (fila) fila.estadopedido = r.estadopedido;
+        for (const v of [venta, this.ventas.find(f => f.idventa === venta.idventa)]) {
+          if (v) { v.estadopedido = r.estadopedido; v.paqueteria = r.paqueteria; v.numero_guia = r.numero_guia; }
+        }
         this.mensajeEstado = `Pedido #${venta.idventa} marcado como "${r.estadopedido}".`;
+        this.paqueteria = '';
+        this.numeroGuia = '';
         this.actualizando = false;
       },
       error: err => {
@@ -108,10 +130,9 @@ export class VentasAdminComponent implements OnInit {
     });
   }
 
-  /** Se puede cancelar mientras el pedido no se haya entregado ni cancelado. */
+  /** Se puede cancelar mientras el pedido no haya salido a paquetería, ni se haya entregado o cancelado. */
   puedeCancelar(venta: Venta): boolean {
-    const estado = venta.estadopedido?.toUpperCase();
-    return estado !== 'CANCELADO' && estado !== 'ENTREGADO';
+    return !['CANCELADO', 'EN TRANSITO', 'ENTREGADO'].includes(normalizarEstado(venta.estadopedido));
   }
 
   cancelarPedido(venta: Venta): void {
@@ -136,8 +157,8 @@ export class VentasAdminComponent implements OnInit {
   }
 
   estadoClase(estado: string): string {
-    switch (estado?.toUpperCase()) {
-      case 'LISTO PARA RECOGER': return 'badge bg-info text-dark';
+    switch (normalizarEstado(estado)) {
+      case 'EN PREPARACION': case 'EN TRANSITO': return 'badge bg-info text-dark';
       case 'PAGADO': case 'ENTREGADO': case 'COMPLETADO': return 'badge bg-success';
       case 'CANCELADO': return 'badge bg-danger';
       case 'PENDIENTE': return 'badge bg-warning text-dark';

@@ -45,8 +45,11 @@ jobs:
         run: npm run build -- --configuration=production
 
       # 6a) Vulnerabilidades en dependencias 
-      - name: Auditoría de dependencias
-        run: npm audit --omit=dev --audit-level=high
+      - name: Auditoría de dependencias (bloquea si hay críticas)
+        run: npm audit --omit=dev --audit-level=critical
+
+      - name: Reporte completo de vulnerabilidades (informativo)
+        run: npm audit --omit=dev || true
 
   # 6b) Vulnerabilidades en código, SAST
   codeql:

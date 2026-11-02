@@ -46,17 +46,18 @@ export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
   ) { }
 
   ngOnInit(): void {
-    // 1. Verificar si el usuario está logueado y si el carrito no está vacío
-    if (!this.authService.getAuthHeader() || this.carritoService.getItemCount() === 0) {
-      this.router.navigate(['/carrito']);
-      return;
-    }
-
-    // 2. Inicializar formulario (solo necesitamos la selección del punto)
+    // 1. Inicializar formulario (solo necesitamos la selección del punto).
+    // Va antes de la validación: si se redirige, el template se alcanza a renderizar y necesita el FormGroup.
     this.checkoutForm = this.fb.group({
       idpunto: ['', Validators.required],
       // Aquí se podría añadir un checkbox de "Aceptar términos y condiciones"
     });
+
+    // 2. Verificar si el usuario está logueado y si el carrito no está vacío
+    if (!this.authService.getAuthHeader() || this.carritoService.getItemCount() === 0) {
+      this.router.navigate(['/carrito']);
+      return;
+    }
 
     // 3. Cargar Puntos de Entrega
     this.puntosEntrega$ = this.ventasService.getPuntosEntrega();

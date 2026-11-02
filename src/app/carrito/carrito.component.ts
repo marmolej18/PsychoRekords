@@ -2,11 +2,12 @@
 import { Component, OnInit } from '@angular/core';
 import { Observable } from 'rxjs';
 import { CarritoService } from '../services/carrito.service';
+import { Producto } from '../services/productos.service';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-// Interface para CarritoItem (repetida para claridad)
+
 interface CarritoItem {
-  producto: any;
+  producto: Producto;
   cantidad: number;
 }
 
@@ -23,7 +24,7 @@ export class CarritoComponent implements OnInit {
   subtotal$ = new Observable<number>();
 
   IVA_PORCENTAJE = 0.16; // 16% de IVA
-  // El envío depende de la paquetería o punto medio que se elija en el checkout; aquí no se suma.
+  COSTO_ENVIO = 80.00;   // Costo fijo de envío
 
   constructor(
     private carritoService: CarritoService
@@ -33,54 +34,38 @@ export class CarritoComponent implements OnInit {
     this.carritoItems$ = this.carritoService.items$;
     this.subtotal$ = this.carritoService.getSubtotal();
   }
-    // suma o resta unidades dentro del limite de stock
+
+  // suma o resta unidades y elimina el producto si baja a 0
   cambiarCantidad(item: CarritoItem, delta: number): void {
     const nueva = item.cantidad + delta;
-    if (nueva >= 1 && nueva <= item.producto.cantstock) {
+    if (nueva <= item.producto.cantstock) {
       this.carritoService.actualizarCantidad(item.producto.idprod, nueva);
     }
   }
 
-  /**
-   * Elimina un producto del carrito.
-   */
   eliminarItem(idProd: number): void {
     if (confirm('¿Estás seguro de que deseas eliminar este producto del carrito?')) {
       this.carritoService.eliminarProducto(idProd);
     }
   }
 
-  /**
-   * Vacía todo el carrito.
-   */
   vaciarCarrito(): void {
     if (confirm('¿Estás seguro de que deseas vaciar todo el carrito?')) {
       this.carritoService.vaciarCarrito();
     }
   }
 
-  /**
-   * Calcula el IVA basado en el subtotal.
-   */
   calcularIVA(subtotal: number): number {
     return subtotal * this.IVA_PORCENTAJE;
   }
 
-  /**
-   * Calcula el total final (Subtotal + IVA + Envío).
-   */
   calcularTotal(subtotal: number, iva: number): number {
-    return subtotal + iva;
+    return subtotal + iva + this.COSTO_ENVIO;
   }
 
-  /**
- * Maneja el error de carga de la imagen del producto.
- * Si la imagen no existe, se reemplaza por el logo por defecto.
- */
   onImageError(event: Event): void {
     const img = event.target as HTMLImageElement;
     img.src = 'logo.png';
-    // Prevenir bucle infinito si el logo también falla
     img.onerror = null;
   }
 }

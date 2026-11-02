@@ -17,19 +17,26 @@ const verificarToken = async (req, res, next) => {
 
     const token = authHeader.split(' ')[1];
 
+    // A. Verificar si el token fue invalidado en un logout previo.
+    // Un fallo de la BD no es culpa del token: se responde 500 para que el frontend no cierre la sesión.
+    let blockResult;
     try {
-        // A. Verificar si el token fue invalidado en un logout previo
-        const blockResult = await db.query(
+        blockResult = await db.query(
             'SELECT 1 FROM token_blocklist WHERE token = $1',
             [token]
         );
+    } catch (error) {
+        console.error('Error al consultar token_blocklist:', error.message);
+        return res.status(500).json({ message: 'Error interno al validar la sesión.' });
+    }
 
-        if (blockResult.rowCount > 0) {
-            return res.status(401).json({ 
-                message: 'Token inválido o sesión cerrada previamente.' 
-            });
-        }
+    if (blockResult.rowCount > 0) {
+        return res.status(401).json({
+            message: 'Token inválido o sesión cerrada previamente.'
+        });
+    }
 
+    try {
         // B. Verificar firma y vigencia del token
         const decoded = jwt.verify(
             token, 

@@ -1,0 +1,107 @@
+<section class="container py-4">
+  <h1>Mis pedidos</h1>
+  <p class="text-center text-muted mb-4">Consulta tus compras y en qué etapa se encuentra cada una.</p>
+
+  @if (cargando) {
+    <p role="status" class="text-center p-4">Cargando tus pedidos...</p>
+  } @else if (error) {
+    <div role="alert" class="alert alert-danger">{{ error }} <button class="btn btn-outline-dark btn-sm" (click)="cargarPedidos()">Reintentar</button></div>
+  } @else if (!pedidos.length) {
+    <div class="alert alert-info text-center p-4">
+      <p class="fw-bold mb-1">Todavía no tienes pedidos.</p>
+      <p class="mb-0">Cuando compres algo en el catálogo, aquí podrás seguir su estado.</p>
+      <a routerLink="/catalogo" class="btn btn-pedido mt-3">Ir al catálogo</a>
+    </div>
+  } @else {
+    <div class="filtros mb-3" role="group" aria-label="Filtrar pedidos por estado">
+      @for (f of filtros; track f.clave) {
+        <button type="button" class="btn btn-sm" [class.activo]="filtro === f.clave"
+          [attr.aria-pressed]="filtro === f.clave" (click)="filtro = f.clave">
+          {{ f.texto }} <span class="conteo">{{ contar(f.clave) }}</span>
+        </button>
+      }
+    </div>
+
+    <ul class="list-unstyled">
+      @for (pedido of pedidosFiltrados; track pedido.idventa) {
+        <li class="pedido card mb-3 shadow-sm">
+          <button type="button" class="pedido-resumen" (click)="alternar(pedido.idventa)"
+            [attr.aria-expanded]="abierto === pedido.idventa" [attr.aria-controls]="'pedido-' + pedido.idventa">
+            <span class="fw-bold">Pedido #{{ pedido.idventa }}</span>
+            <span class="text-muted small">{{ pedido.fecha | date:'dd/MM/yyyy HH:mm' }}</span>
+            <span class="small">{{ totalArticulos(pedido) }} {{ totalArticulos(pedido) === 1 ? 'artículo' : 'artículos' }}</span>
+            <span [class]="estadoClase(pedido)">{{ estadoTexto(pedido) }}</span>
+            <span class="fw-bold text-nowrap total">{{ pedido.totalventa | currency:'MXN':'$' }}</span>
+          </button>
+
+          <div class="card-body pt-0">
+            @if (esCancelado(pedido)) {
+              <p class="alert alert-danger small mb-0">Este pedido fue cancelado. Los productos regresaron al inventario.</p>
+            } @else {
+              <ol class="seguimiento" [attr.aria-label]="'Seguimiento del pedido ' + pedido.idventa">
+                @for (etapa of etapas; track etapa; let i = $index) {
+                  <li [class.hecha]="i <= etapaActual(pedido)" [class.actual]="i === etapaActual(pedido)"
+                    [attr.aria-current]="i === etapaActual(pedido) ? 'step' : null">
+                    <span class="punto" aria-hidden="true"></span>{{ etapa }}
+                  </li>
+                }
+              </ol>
+              @if (pedido.numero_guia) {
+                <p class="small mt-2 mb-0">
+                  Enviado por <strong>{{ pedido.paqueteria }}</strong> · Guía <strong>{{ pedido.numero_guia }}</strong>
+                  @if (urlRastreo(pedido); as url) {
+                    · <a [href]="url" target="_blank" rel="noopener">Rastrear mi paquete</a>
+                  }
+                </p>
+              }
+            }
+          </div>
+
+          @if (abierto === pedido.idventa) {
+            <div class="card-body border-top" [id]="'pedido-' + pedido.idventa">
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  @if (pedido.envio_calle) {
+                    <h2 class="h6">Dirección de envío</h2>
+                    @if (pedido.paqueteria) {
+                      <p class="small text-muted mb-1">{{ pedido.paqueteria }} – {{ pedido.servicio_envio }} · {{ pedido.costo_envio | currency:'MXN':'$' }}</p>
+                    }
+                    <p class="fw-bold mb-1">{{ pedido.envio_destinatario }}</p>
+                    <p class="mb-1">{{ pedido.envio_calle }} {{ pedido.envio_numero }}, Col. {{ pedido.envio_colonia }}</p>
+                    <p class="mb-0">C.P. {{ pedido.envio_cp }}, {{ pedido.envio_ciudad }}, {{ pedido.envio_estado }}</p>
+                  } @else {
+                    <h2 class="h6">Punto medio de entrega</h2>
+                    <p class="fw-bold mb-1">{{ pedido.nombrepunto || 'Sin información' }}</p>
+                    @if (pedido.direccioncompleta) { <p class="mb-1">{{ pedido.direccioncompleta }}</p> }
+                    @if (pedido.horarioatencion) { <p class="mb-0 text-muted small">Horario: {{ pedido.horarioatencion }}</p> }
+                    @if (pedido.envio_referencias) { <p class="mb-0 text-muted small">Tus referencias: {{ pedido.envio_referencias }}</p> }
+                  }
+                </div>
+              </div>
+              <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                  <caption>Productos del pedido</caption>
+                  <thead><tr><th scope="col">Producto</th><th scope="col">Cantidad</th><th scope="col">Precio unitario</th><th scope="col">Subtotal</th></tr></thead>
+                  <tbody>
+                    @for (detalle of pedido.detalles; track detalle.iddetalle) {
+                      <tr><td><strong>{{ detalle.titulo }}</strong><br>{{ detalle.artista }}</td><td>{{ detalle.cantidad }}</td><td>{{ detalle.precioUnitario | currency:'MXN':'$' }}</td><td>{{ detalle.cantidad * detalle.precioUnitario | currency:'MXN':'$' }}</td></tr>
+                    } @empty { <tr><td colspan="4">No hay productos registrados para este pedido.</td></tr> }
+                  </tbody>
+                </table>
+              </div>
+              @if (!esCancelado(pedido) && !yaSalio(pedido)) {
+                <p class="cancelacion small mt-3 mb-0">
+                  ¿Necesitas cancelar este pedido?
+                  <a [href]="whatsappNegocio" target="_blank" rel="noopener">Escríbenos por WhatsApp</a>
+                  indicando el pedido #{{ pedido.idventa }} y lo gestionamos por ti.
+                </p>
+              }
+            </div>
+          }
+        </li>
+      } @empty {
+        <li class="alert alert-light text-center">No tienes pedidos en esta categoría.</li>
+      }
+    </ul>
+  }
+</section>

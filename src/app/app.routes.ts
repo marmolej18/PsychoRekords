@@ -7,7 +7,6 @@ import { RegistroUsuarioComponent } from './registro-usuario/registro-usuario.co
 import { CatalogoComponent } from './catalogo/catalogo.component';
 import { CarritoComponent } from './carrito/carrito.component';
 import { CheckoutComponent } from './checkout/checkout.component';
-import { HistorialComponent } from './historial/historial.component';
 import { InventarioComponent } from './inventario/inventario.component';
 import { ReportesComponent } from './reportes/reportes.component';
 import { GestionUsuariosComponent } from './gestion-usuarios/gestion-usuarios.component';
@@ -15,6 +14,7 @@ import { DetallesComponent } from './detalles/detalles.component';
 
 import { VentasAdminComponent } from './ventas-admin/ventas-admin.component';
 import { adminGuard } from './ventas-admin/admin.guard';
+import { MisPedidosComponent } from './mis-pedidos/mis-pedidos.component';
 
 export const routes: Routes = [
     { path: 'inicio', component: InicioComponent },
@@ -26,7 +26,7 @@ export const routes: Routes = [
     { path: 'detalles/:id', component: DetallesComponent},
     { path: 'carrito', component: CarritoComponent },
     { path: 'checkout', component: CheckoutComponent },
-    { path: 'historial', component: HistorialComponent },
+    { path: 'mis-pedidos', component: MisPedidosComponent },
     { path: 'admin/ventas', component: VentasAdminComponent, canActivate: [adminGuard] },
     { path: 'admin/inventario', component: InventarioComponent },
     { path: 'admin/reportes', component: ReportesComponent },

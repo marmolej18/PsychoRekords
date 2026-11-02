@@ -5,15 +5,16 @@ const dbPath = require.resolve('../src/db');
 let consultas = [];
 let responder;
 let blocklistFalla = false;
+const query = async (sql, params) => {
+  if (sql.includes('FROM token_blocklist')) {
+    if (blocklistFalla) throw new Error('no existe la relación «token_blocklist»');
+    return { rows: [], rowCount: 0 };
+  }
+  consultas.push({ sql, params });
+  return responder(sql, params);
+};
 require.cache[dbPath] = { id: dbPath, filename: dbPath, loaded: true,
-  exports: { query: async (sql, params) => {
-    if (sql.includes('FROM token_blocklist')) {
-      if (blocklistFalla) throw new Error('no existe la relación «token_blocklist»');
-      return { rows: [], rowCount: 0 };
-    }
-    consultas.push({ sql, params });
-    return responder(sql, params);
-  } } };
+  exports: { query, getClient: async () => ({ query, release: () => {} }) } };
 const express = require('express');
 const app = express();
 app.use(express.json());
@@ -202,7 +203,7 @@ test('crear venta exige elegir punto medio o tarifa, no ambos', async () => {
   }
   assert.equal(consultas.length, 0);
   responder = async () => ({ rows: [] });
-  const inactivo = await crearVentaCon({ idpunto: 1 });
+  const inactivo = await crearVentaCon({ idpunto: 1, envio: contactoValido });
   assert.equal(inactivo.status, 400);
   assert.match(inactivo.body.message, /punto de entrega no está disponible/);
   assert.match(consultas[0].sql, /AND activo/);
@@ -210,6 +211,58 @@ test('crear venta exige elegir punto medio o tarifa, no ambos', async () => {
 });
 const direccionValida = { destinatario: 'Juan Pérez', telefono: '449 123 4567', calle: 'Av. Madero', numero: '123',
   colonia: 'Centro', cp: '20000', ciudad: 'Aguascalientes', estado: 'Aguascalientes' };
+const contactoValido = { telefono: '449-123-4567', correo: 'juan@email.com', referencias: 'Playera negra, en la entrada' };
+test('punto medio exige teléfono, correo y referencias antes de tocar la BD', async () => {
+  consultas = [];
+  for (const [envio, mensaje] of [[undefined, /teléfono/], [{ ...contactoValido, telefono: '123' }, /teléfono/],
+    [{ ...contactoValido, correo: 'juan@' }, /correo/], [{ ...contactoValido, correo: '' }, /correo/],
+    [{ ...contactoValido, referencias: '   ' }, /referencias son obligatorias/],
+    [{ ...contactoValido, referencias: 'x'.repeat(301) }, /300/]]) {
+    const r = await crearVentaCon({ idpunto: 2, envio });
+    assert.equal(r.status, 400, JSON.stringify(envio));
+    assert.match(r.body.message, mensaje);
+  }
+  assert.equal(consultas.length, 0);
+});
+test('punto medio guarda una copia del punto y el contacto en la venta', async () => {
+  consultas = [];
+  responder = async sql => {
+    if (sql.includes('FROM puntoentrega')) {
+      return { rows: [{ nombrepunto: 'UAA', direccioncompleta: 'Ciudad Universitaria', horarioatencion: 'Por acordar' }] };
+    }
+    if (sql.includes('INSERT INTO "venta"')) return { rows: [{ idventa: 7, fecha: '2026-11-02' }] };
+    if (sql.includes('UPDATE "producto"')) return { rows: [{ cantstock: 9 }] };
+    return { rows: [] };
+  };
+  const r = await crearVentaCon({ idpunto: 2, envio: { ...contactoValido, calle: 'ignorada' } });
+  assert.equal(r.status, 201);
+  const insert = consultas.find(c => c.sql.includes('INSERT INTO "venta"'));
+  const guardado = Object.fromEntries(insert.sql.match(/\(([^)]*)\)/)[1].split(', ')
+    .map((col, i) => [col.replace(/"/g, ''), insert.params[i]]));
+  assert.deepEqual(guardado, {
+    idusuario: 4, totalventa: 550, estadopedido: 'Pagado', idpunto: 2, costo_envio: 0,
+    envio_telefono: '4491234567', envio_correo: 'juan@email.com', envio_referencias: 'Playera negra, en la entrada',
+    entrega_punto_nombre: 'UAA', entrega_punto_direccion: 'Ciudad Universitaria', entrega_punto_horario: 'Por acordar'
+  });
+});
+test('a domicilio guarda paquetería, costo y la dirección completa en la venta', async () => {
+  consultas = [];
+  responder = async sql => {
+    if (sql.includes('FROM tarifaenvio')) return { rows: [{ paqueteria: 'DHL', servicio: 'Nacional Económico', precio: '216.00' }] };
+    if (sql.includes('INSERT INTO "venta"')) return { rows: [{ idventa: 8, fecha: '2026-11-02' }] };
+    if (sql.includes('UPDATE "producto"')) return { rows: [{ cantstock: 9 }] };
+    return { rows: [] };
+  };
+  assert.equal((await crearVentaCon({ idtarifa: 3, envio: direccionValida })).status, 201);
+  const insert = consultas.find(c => c.sql.includes('INSERT INTO "venta"'));
+  const guardado = Object.fromEntries(insert.sql.match(/\(([^)]*)\)/)[1].split(', ')
+    .map((col, i) => [col.replace(/"/g, ''), insert.params[i]]));
+  assert.equal(guardado.paqueteria, 'DHL');
+  assert.equal(guardado.costo_envio, 216);
+  assert.equal(guardado.envio_calle, 'Av. Madero');
+  assert.equal(guardado.envio_cp, '20000');
+  assert.equal(guardado.idpunto, undefined);
+});
 test('envío a domicilio exige una dirección válida antes de buscar la tarifa', async () => {
   consultas = [];
   for (const envio of [undefined, { ...direccionValida, calle: '  ' }, { ...direccionValida, cp: '2000' },

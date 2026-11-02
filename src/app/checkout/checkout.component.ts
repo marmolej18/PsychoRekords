@@ -6,7 +6,7 @@ import { CommonModule } from '@angular/common';
 import { CarritoService } from '../services/carrito.service';
 import { AuthService } from '../services/auth.service';
 import {
-  VentasService, DetalleVentaDTO, DireccionEnvio, PuntoEntrega, TarifaEnvio, VentaDTO
+  VentasService, ContactoPunto, DetalleVentaDTO, DireccionEnvio, PuntoEntrega, TarifaEnvio, VentaDTO
 } from '../services/ventas.service';
 import { combineLatest, Observable, Subscription } from 'rxjs';
 import { map, startWith } from 'rxjs/operators';
@@ -69,11 +69,21 @@ export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
         estado: ['', [Validators.required, Validators.maxLength(50)]],
         referencias: ['', Validators.maxLength(300)],
       }),
+      // En punto medio: cómo contactar al cliente y cómo reconocerlo al entregar.
+      contacto: this.fb.group({
+        correo: ['', [Validators.required, Validators.email, Validators.maxLength(150)]],
+        telefono: ['', [Validators.required, Validators.pattern(/^\d{10}$/)]],
+        referencias: ['', [Validators.required, Validators.maxLength(300)]],
+      }),
     });
+    // Solo se valida el grupo de la opción elegida; el otro queda deshabilitado.
     const direccion = this.checkoutForm.get('direccion')!;
+    const contacto = this.checkoutForm.get('contacto')!;
     direccion.disable();
+    contacto.disable();
     this.checkoutForm.get('entrega')!.valueChanges.subscribe(() => {
       this.esDomicilio ? direccion.enable() : direccion.disable();
+      this.esPuntoMedio ? contacto.enable() : contacto.disable();
     });
 
     // 2. Verificar si el usuario está logueado y si el carrito no está vacío
@@ -92,9 +102,11 @@ export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
     this.authService.getUserById(Number(this.authService.getAuthHeader())).subscribe({
       next: (perfil: any) => {
         const valor = (v: unknown) => (typeof v === 'string' ? v : '');
+        const telefono = valor(perfil.telefono).replace(/\D/g, '');
+        contacto.patchValue({ correo: valor(perfil.correoelectronico), telefono });
         direccion.patchValue({
           destinatario: [perfil.nombre, perfil.apellidop, perfil.apellidom].filter(Boolean).join(' '),
-          telefono: valor(perfil.telefono).replace(/\D/g, ''),
+          telefono,
           calle: valor(perfil.calle),
           numero: valor(perfil.numcasa),
           colonia: valor(perfil.colonia),
@@ -146,6 +158,10 @@ export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
 
   get esDomicilio(): boolean {
     return String(this.checkoutForm.get('entrega')?.value ?? '').startsWith('tarifa-');
+  }
+
+  get esPuntoMedio(): boolean {
+    return String(this.checkoutForm.get('entrega')?.value ?? '').startsWith('punto-');
   }
 
   /** Los puntos medios son gratis; a domicilio se cobra la tarifa fija de la paquetería. */
@@ -202,14 +218,16 @@ export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
     this.errorMessage = null;
 
     // getRawValue: la entrega se deshabilita (bloquea) al pagar, pero su valor sigue contando.
-    const { entrega, direccion } = this.checkoutForm.getRawValue();
+    const { entrega, direccion, contacto } = this.checkoutForm.getRawValue();
     if (!entrega) {
       this.errorMessage = 'Elige cómo quieres recibir tu pedido.';
       return;
     }
     if (this.checkoutForm.invalid) {
       this.checkoutForm.markAllAsTouched();
-      this.errorMessage = 'Por favor, completa correctamente la dirección de envío.';
+      this.errorMessage = this.esPuntoMedio
+        ? 'Por favor, completa correo, teléfono y referencias para la entrega.'
+        : 'Por favor, completa correctamente la dirección de envío.';
       return;
     }
 
@@ -237,9 +255,9 @@ export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
       precioUnitario: Number(item.producto.precio)
     }));
 
-    // Punto medio: solo el punto. A domicilio: la tarifa y la dirección.
+    // Punto medio: el punto y el contacto. A domicilio: la tarifa y la dirección.
     const ventaData: VentaDTO = tipo === 'punto'
-      ? { idusuario: idUsuario, productos, idpunto: Number(idEntrega) }
+      ? { idusuario: idUsuario, productos, idpunto: Number(idEntrega), envio: contacto as ContactoPunto }
       : { idusuario: idUsuario, productos, idtarifa: Number(idEntrega), envio: direccion as DireccionEnvio };
 
     // 2. Llamada al servicio para crear la venta (transacción)
@@ -264,5 +282,6 @@ export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
   // Getters para fácil acceso al formulario
   get f() { return this.checkoutForm.controls; }
   get d() { return (this.checkoutForm.get('direccion') as FormGroup).controls; }
+  get c() { return (this.checkoutForm.get('contacto') as FormGroup).controls; }
 }
 

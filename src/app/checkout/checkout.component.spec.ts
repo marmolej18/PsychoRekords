@@ -41,23 +41,35 @@ describe('CheckoutComponent', () => {
         colonia: 'Centro', cp: '20000', ciudad: 'Aguascalientes', estado: 'Aguascalientes'
     };
 
+    const contacto = { correo: 'ana@test.com', telefono: '4491234567', referencias: 'Playera negra, entrada principal' };
+
     it('debería iniciar inválido hasta elegir cómo recibir el pedido', () => {
         expect(component.checkoutForm.valid).toBeFalse();
-        component.checkoutForm.patchValue({ entrega: 'punto-2' });
+        component.checkoutForm.patchValue({ entrega: 'punto-2', contacto });
         expect(component.checkoutForm.valid).toBeTrue();
     });
 
-    it('en punto medio no pide dirección y el envío es gratis', () => {
+    it('en punto medio no pide dirección, es gratis y exige correo, teléfono y referencias', () => {
         component.checkoutForm.patchValue({ entrega: 'punto-2' });
         expect(component.esDomicilio).toBeFalse();
+        expect(component.esPuntoMedio).toBeTrue();
         expect(component.checkoutForm.get('direccion')!.disabled).toBeTrue();
         expect(component.costoEnvio).toBe(0);
+        component.checkoutForm.patchValue({ contacto });
+        expect(component.checkoutForm.valid).toBeTrue();
+        for (const campo of ['correo', 'telefono', 'referencias']) {
+            component.checkoutForm.patchValue({ contacto: { ...contacto, [campo]: '' } });
+            expect(component.checkoutForm.valid).withContext(campo).toBeFalse();
+        }
+        component.checkoutForm.patchValue({ contacto: { ...contacto, correo: 'ana@' } });
+        expect(component.checkoutForm.valid).toBeFalse();
     });
 
     it('a domicilio pide la dirección y cobra la tarifa elegida', () => {
         component.tarifas = [{ idtarifa: 3, paqueteria: 'DHL', servicio: 'Nacional Económico', precio: 216, dias_min: 2, dias_max: 5 }];
         component.checkoutForm.patchValue({ entrega: 'tarifa-3' });
         expect(component.esDomicilio).toBeTrue();
+        expect(component.checkoutForm.get('contacto')!.disabled).toBeTrue();
         expect(component.costoEnvio).toBe(216);
         expect(component.checkoutForm.valid).toBeFalse();
         component.checkoutForm.patchValue({ direccion });
@@ -70,7 +82,7 @@ describe('CheckoutComponent', () => {
 
     it('no debería confirmar la compra si no se completó el pago de PayPal', async () => {
         // Arrange
-        component.checkoutForm.patchValue({ entrega: 'punto-2' });
+        component.checkoutForm.patchValue({ entrega: 'punto-2', contacto });
         // Act
         await component.confirmarCompra();
         // Assert

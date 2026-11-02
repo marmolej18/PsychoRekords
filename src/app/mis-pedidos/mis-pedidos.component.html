@@ -74,6 +74,7 @@
                     <p class="fw-bold mb-1">{{ pedido.nombrepunto || 'Sin información' }}</p>
                     @if (pedido.direccioncompleta) { <p class="mb-1">{{ pedido.direccioncompleta }}</p> }
                     @if (pedido.horarioatencion) { <p class="mb-0 text-muted small">Horario: {{ pedido.horarioatencion }}</p> }
+                    @if (pedido.envio_referencias) { <p class="mb-0 text-muted small">Tus referencias: {{ pedido.envio_referencias }}</p> }
                   }
                 </div>
               </div>

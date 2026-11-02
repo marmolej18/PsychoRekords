@@ -14,11 +14,11 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
-      # 1) Descarga del código fuente (5%)
+      # 1) Descarga del código fuente 
       - name: Descargar código
         uses: actions/checkout@v4
 
-      # 2) Entorno y dependencias (5%)
+      # 2) Entorno y dependencias
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
@@ -28,15 +28,15 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
-      # 3) Linting (15%)
+      # 3) Linting
       - name: Análisis estático (ESLint)
         run: npm run lint
 
-      # 4) Pruebas unitarias (15%)
+      # 4) Pruebas unitarias 
       - name: Pruebas unitarias
         run: npm run test:unit
 
-      # 5) Pruebas de integración (20%)
+      # 5) Pruebas de integración 
       - name: Pruebas de integración
         run: npm run test:integration
 
@@ -44,11 +44,11 @@ jobs:
       - name: Compilar proyecto
         run: npm run build -- --configuration production
 
-      # 6a) Vulnerabilidades en dependencias (15%)
+      # 6a) Vulnerabilidades en dependencias 
       - name: Auditoría de dependencias
         run: npm audit --omit=dev --audit-level=high
 
-  # 6b) Vulnerabilidades en código, SAST (15%)
+  # 6b) Vulnerabilidades en código, SAST
   codeql:
     runs-on: ubuntu-latest
     permissions:
@@ -61,7 +61,7 @@ jobs:
           languages: javascript-typescript
       - uses: github/codeql-action/analyze@v3
 
-  # 7) Empaquetado en contenedor Docker (25%)
+  # 7) Empaquetado en contenedor Docker 
   docker-publish:
     needs: [build-and-test, codeql]
     if: github.event_name != 'pull_request'

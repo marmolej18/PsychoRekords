@@ -11,6 +11,16 @@ export interface PuntoEntrega {
   horarioatencion: string;
 }
 
+// Tarifa fija de envío a domicilio por paquetería
+export interface TarifaEnvio {
+  idtarifa: number;
+  paqueteria: string;
+  servicio: string;
+  precio: number;
+  dias_min: number;
+  dias_max: number;
+}
+
 // Interfaz para el Detalle de la Venta que espera el Backend
 export interface DetalleVentaDTO {
   idprod: number;
@@ -31,12 +41,13 @@ export interface DireccionEnvio {
   referencias?: string;
 }
 
-// Interfaz para el Body de la Transacción
+// Interfaz para el Body de la Transacción: punto medio (idpunto) o envío a domicilio (idtarifa + envio)
 export interface VentaDTO {
   idusuario: number;
   idpunto?: number;
+  idtarifa?: number;
   productos: DetalleVentaDTO[];
-  envio: DireccionEnvio;
+  envio?: DireccionEnvio;
 }
 
 // Interface para el producto dentro de una venta
@@ -70,8 +81,11 @@ export interface Venta {
   envio_ciudad?: string | null;
   envio_estado?: string | null;
   envio_referencias?: string | null;
-  // Rastreo, se llena cuando el pedido pasa a "En tránsito"
+  // Envío elegido por el cliente (paquetería y servicio vacíos si recoge en un punto medio)
   paqueteria?: string | null;
+  servicio_envio?: string | null;
+  costo_envio?: number;
+  // Rastreo, se llena cuando el pedido pasa a "En tránsito"
   numero_guia?: string | null;
 }
 
@@ -125,6 +139,7 @@ export function coincideFiltro(venta: Venta, filtro: FiltroPedidos): boolean {
 export class VentasService {
   private apiUrl = `http://localhost:3000/api/ventas`;
   private puntosUrl = `http://localhost:3000/api/puntos-entrega`;
+  private tarifasUrl = `http://localhost:3000/api/tarifas-envio`;
 
   constructor(private http: HttpClient) { }
 
@@ -140,6 +155,14 @@ export class VentasService {
    */
   getPuntosEntrega(): Observable<PuntoEntrega[]> {
     return this.http.get<PuntoEntrega[]>(this.puntosUrl);
+  }
+
+  /**
+   * GET /api/tarifas-envio
+   * Tarifas fijas de envío a domicilio, de la más barata a la más cara.
+   */
+  getTarifasEnvio(): Observable<TarifaEnvio[]> {
+    return this.http.get<TarifaEnvio[]>(this.tarifasUrl);
   }
 
   /**

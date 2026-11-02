@@ -433,8 +433,45 @@ ALTER TABLE venta
     ADD COLUMN IF NOT EXISTS paqueteria VARCHAR(30),
     ADD COLUMN IF NOT EXISTS numero_guia VARCHAR(40);
 
--- Los pedidos nuevos se envían a domicilio; el punto de entrega queda solo para los pedidos anteriores.
+-- Cada pedido se envía a domicilio (con tarifa) o se entrega en un punto medio: idpunto ya no es obligatorio.
 ALTER TABLE venta ALTER COLUMN idpunto DROP NOT NULL;
+
+-- Tarifas fijas por paquetería. Se cambian aquí (o con UPDATE) sin tocar el código.
+CREATE TABLE IF NOT EXISTS tarifaenvio (
+    idtarifa SERIAL PRIMARY KEY,
+    paqueteria VARCHAR(30) NOT NULL CHECK (paqueteria IN ('DHL', 'Estafeta', 'Correos de México')),
+    servicio VARCHAR(60) NOT NULL,
+    precio NUMERIC(10, 2) NOT NULL CHECK (precio >= 0),
+    dias_min INT NOT NULL,
+    dias_max INT NOT NULL,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    UNIQUE (paqueteria, servicio)
+);
+
+INSERT INTO tarifaenvio (paqueteria, servicio, precio, dias_min, dias_max) VALUES
+    ('Correos de México', 'Estándar', 80.00, 7, 14),
+    ('Estafeta', 'Terrestre', 165.00, 3, 6),
+    ('DHL', 'Nacional Económico', 216.00, 2, 5)
+ON CONFLICT (paqueteria, servicio) DO NOTHING;
+
+-- Envío elegido por el cliente, congelado en la venta (0 si recoge en un punto medio).
+ALTER TABLE venta
+    ADD COLUMN IF NOT EXISTS servicio_envio VARCHAR(60),
+    ADD COLUMN IF NOT EXISTS costo_envio NUMERIC(10, 2) NOT NULL DEFAULT 0;
+
+-- Puntos medios de entrega gratuita dentro de Aguascalientes. "activo" permite retirar un punto
+-- sin perder el historial de los pedidos que ya lo usaron.
+ALTER TABLE puntoentrega ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TRUE;
+UPDATE puntoentrega SET activo = FALSE WHERE nombrepunto = 'Plaza Central';
+
+INSERT INTO puntoentrega (nombrepunto, direccioncompleta, horarioatencion)
+SELECT p.nombre, p.direccion, 'Día y hora por acordar con la tienda'
+FROM (VALUES
+    ('UAA', 'Universidad Autónoma de Aguascalientes, Ciudad Universitaria, Aguascalientes'),
+    ('Zona Centro', 'Zona Centro, Aguascalientes'),
+    ('Tres Centurias', 'Complejo Ferrocarrilero Tres Centurias, Aguascalientes')
+) AS p(nombre, direccion)
+WHERE NOT EXISTS (SELECT 1 FROM puntoentrega pe WHERE pe.nombrepunto = p.nombre);
 
 -- El flujo cambió de "Listo para recoger" a "En preparación" / "En tránsito".
 UPDATE venta SET estadopedido = 'En preparación' WHERE upper(estadopedido) = 'LISTO PARA RECOGER';

@@ -51,11 +51,15 @@
             <div class="col-md-6"><h3>Datos del pedido</h3><p>{{ venta.fecha | date:'dd/MM/yyyy HH:mm' }}</p><p>{{ venta.cliente }}</p><p>{{ venta.correo }}</p><span [class]="estadoClase(venta.estadopedido)">{{ venta.estadopedido }}</span>
               @if (requiereGuia(venta)) {
                 <div class="rastreo-form mt-3">
-                  <label class="form-label small mb-1" for="paqueteria">Paquetería</label>
-                  <select id="paqueteria" class="form-select form-select-sm mb-2" [(ngModel)]="paqueteria" [disabled]="actualizando">
-                    <option value="" disabled>Selecciona una paquetería</option>
-                    @for (p of paqueterias; track p) { <option [value]="p">{{ p }}</option> }
-                  </select>
+                  @if (venta.paqueteria) {
+                    <p class="small mb-2">Paquetería elegida por el cliente: <strong>{{ venta.paqueteria }}</strong></p>
+                  } @else {
+                    <label class="form-label small mb-1" for="paqueteria">Paquetería</label>
+                    <select id="paqueteria" class="form-select form-select-sm mb-2" [(ngModel)]="paqueteria" [disabled]="actualizando">
+                      <option value="" disabled>Selecciona una paquetería</option>
+                      @for (p of paqueterias; track p) { <option [value]="p">{{ p }}</option> }
+                    </select>
+                  }
                   <label class="form-label small mb-1" for="numeroGuia">Número de guía</label>
                   <input id="numeroGuia" class="form-control form-control-sm" [(ngModel)]="numeroGuia"
                     maxlength="40" placeholder="Ej. 1234567890" [disabled]="actualizando">
@@ -79,15 +83,18 @@
               </div>
             </div>
             <div class="col-md-6">
-              @if (venta.envio_calle) {
+              @if (esDomicilio(venta)) {
                 <h3>Dirección de envío</h3>
+                @if (venta.paqueteria) {
+                  <p class="small mb-2">{{ venta.paqueteria }} – {{ venta.servicio_envio }} · {{ venta.costo_envio | currency:'MXN':'$' }}</p>
+                }
                 <p class="fw-bold mb-1">{{ venta.envio_destinatario }}</p>
                 <p class="mb-1">{{ venta.envio_calle }} {{ venta.envio_numero }}, Col. {{ venta.envio_colonia }}</p>
                 <p class="mb-1">C.P. {{ venta.envio_cp }}, {{ venta.envio_ciudad }}, {{ venta.envio_estado }}</p>
                 <p class="mb-1">Tel. {{ venta.envio_telefono }}</p>
                 @if (venta.envio_referencias) { <p class="text-muted small mb-1">Referencias: {{ venta.envio_referencias }}</p> }
               } @else {
-                <h3>Punto de entrega</h3><p class="fw-bold">{{ venta.nombrepunto || 'Sin información' }}</p><p>{{ venta.direccioncompleta }}</p>
+                <h3>Punto medio de entrega</h3><p class="fw-bold">{{ venta.nombrepunto || 'Sin información' }} <span class="badge bg-success">Gratis</span></p><p>{{ venta.direccioncompleta }}</p>
               }
               @if (venta.numero_guia) {
                 <h3 class="mt-3">Rastreo</h3>

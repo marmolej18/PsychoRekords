@@ -23,7 +23,7 @@ export class CarritoComponent implements OnInit {
   subtotal$ = new Observable<number>();
 
   IVA_PORCENTAJE = 0.16; // 16% de IVA
-  COSTO_ENVIO = 80.00;   // Costo fijo de envío
+  // El envío depende de la paquetería o punto medio que se elija en el checkout; aquí no se suma.
 
   constructor(
     private carritoService: CarritoService
@@ -70,7 +70,7 @@ export class CarritoComponent implements OnInit {
    * Calcula el total final (Subtotal + IVA + Envío).
    */
   calcularTotal(subtotal: number, iva: number): number {
-    return subtotal + iva + this.COSTO_ENVIO;
+    return subtotal + iva;
   }
 
   /**

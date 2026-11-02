@@ -137,18 +137,32 @@ test('avanza solo desde la etapa inmediata anterior', async () => {
   assert.equal(r.body.estadopedido, 'En preparación');
   assert.deepEqual(consultas[0].params, ['En preparación', 5, 'Pagado', null, null]);
 });
-test('pasar a "En tránsito" exige paquetería y guía válidas', async () => {
+test('envío a domicilio: "En tránsito" exige guía válida y usa la paquetería que eligió el cliente', async () => {
   consultas = [];
-  for (const body of [{}, { paqueteria: 'FedEx', numeroGuia: '1234567890' },
-    { paqueteria: 'DHL' }, { paqueteria: 'DHL', numeroGuia: '12' }, { paqueteria: 'DHL', numeroGuia: 'guía con espacios' }]) {
+  responder = async sql => ({ rows: sql.startsWith('SELECT') ? [{ idpunto: null, paqueteria: 'DHL' }] : [] });
+  for (const body of [{}, { numeroGuia: '12' }, { numeroGuia: 'guía con espacios' }]) {
     assert.equal((await pedir('estado/5', '2', 'admin', { estado: 'En tránsito', ...body })).status, 400, JSON.stringify(body));
   }
-  assert.equal(consultas.length, 0);
-  responder = async () => ({ rows: [{ idventa: 5, estadopedido: 'En tránsito', paqueteria: 'DHL', numero_guia: 'AB12345678' }] });
-  const r = await pedir('estado/5', '2', 'admin', { estado: 'En tránsito', paqueteria: 'DHL', numeroGuia: ' ab12345678 ' });
+  assert.ok(!consultas.some(c => c.sql.includes('UPDATE')));
+  // Venta sin paquetería registrada: el admin la indica y debe ser válida.
+  responder = async sql => ({ rows: sql.startsWith('SELECT') ? [{ idpunto: null, paqueteria: null }] : [] });
+  assert.equal((await pedir('estado/5', '2', 'admin', { estado: 'En tránsito', paqueteria: 'FedEx', numeroGuia: '1234567890' })).status, 400);
+  consultas = [];
+  responder = async sql => ({ rows: sql.startsWith('SELECT') ? [{ idpunto: null, paqueteria: 'DHL' }]
+    : [{ idventa: 5, estadopedido: 'En tránsito', paqueteria: 'DHL', numero_guia: 'AB12345678' }] });
+  const r = await pedir('estado/5', '2', 'admin', { estado: 'En tránsito', paqueteria: 'Estafeta', numeroGuia: ' ab12345678 ' });
   assert.equal(r.status, 200);
   assert.equal(r.body.numero_guia, 'AB12345678');
-  assert.deepEqual(consultas[0].params, ['En tránsito', 5, 'En preparación', 'DHL', 'AB12345678']);
+  assert.deepEqual(consultas[1].params, ['En tránsito', 5, 'En preparación', 'DHL', 'AB12345678']);
+});
+test('punto medio: "En tránsito" no pide guía', async () => {
+  consultas = [];
+  responder = async sql => ({ rows: sql.startsWith('SELECT') ? [{ idpunto: 2, paqueteria: null }]
+    : [{ idventa: 5, estadopedido: 'En tránsito' }] });
+  assert.equal((await pedir('estado/5', '2', 'admin', { estado: 'En tránsito' })).status, 200);
+  assert.deepEqual(consultas[1].params, ['En tránsito', 5, 'En preparación', null, null]);
+  responder = async () => ({ rows: [] });
+  assert.equal((await pedir('estado/999', '2', 'admin', { estado: 'En tránsito' })).status, 404);
 });
 test('rechaza saltos de etapa y ventas inexistentes', async () => {
   responder = async sql => ({ rows: sql.startsWith('SELECT') ? [{ estadopedido: 'Pagado' }] : [] });
@@ -173,23 +187,36 @@ test('cancelar: solo admin y nunca un pedido entregado ni en tránsito', async (
   assert.match(enCamino.body.message, /ya va en camino/);
   assert.ok(!consultas.some(c => c.sql.includes('sp_cancelar_venta')));
 });
-test('crear venta exige una dirección de envío válida antes de tocar la BD', async () => {
-  const valida = { destinatario: 'Juan Pérez', telefono: '449 123 4567', calle: 'Av. Madero', numero: '123',
-    colonia: 'Centro', cp: '20000', ciudad: 'Aguascalientes', estado: 'Aguascalientes' };
-  const crear = async envio => {
-    const response = await fetch('http://127.0.0.1:' + server.address().port + '/api/ventas/', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${crearToken(4, 'cliente')}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idusuario: 4, productos: [{ idprod: 1, cantidad: 1, precioUnitario: 550 }], envio })
-    });
-    return { status: response.status, body: await response.json() };
-  };
+const crearVentaCon = async entrega => {
+  const response = await fetch('http://127.0.0.1:' + server.address().port + '/api/ventas/', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${crearToken(4, 'cliente')}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idusuario: 4, productos: [{ idprod: 1, cantidad: 1, precioUnitario: 550 }], ...entrega })
+  });
+  return { status: response.status, body: await response.json() };
+};
+test('crear venta exige elegir punto medio o tarifa, no ambos', async () => {
   consultas = [];
-  for (const envio of [undefined, { ...valida, calle: '  ' }, { ...valida, cp: '2000' },
-    { ...valida, telefono: '12345' }, { ...valida, referencias: 'x'.repeat(301) }]) {
-    assert.equal((await crear(envio)).status, 400, JSON.stringify(envio));
+  for (const entrega of [{}, { idpunto: 2, idtarifa: 1 }, { idpunto: 'abc' }, { idtarifa: 0 }]) {
+    assert.equal((await crearVentaCon(entrega)).status, 400, JSON.stringify(entrega));
   }
-  assert.match((await crear({ ...valida, cp: 'abcde' })).body.message, /código postal/);
+  assert.equal(consultas.length, 0);
+  responder = async () => ({ rows: [] });
+  const inactivo = await crearVentaCon({ idpunto: 1 });
+  assert.equal(inactivo.status, 400);
+  assert.match(inactivo.body.message, /punto de entrega no está disponible/);
+  assert.match(consultas[0].sql, /AND activo/);
+  assert.match((await crearVentaCon({ idtarifa: 9, envio: direccionValida })).body.message, /tarifa de envío no está disponible/);
+});
+const direccionValida = { destinatario: 'Juan Pérez', telefono: '449 123 4567', calle: 'Av. Madero', numero: '123',
+  colonia: 'Centro', cp: '20000', ciudad: 'Aguascalientes', estado: 'Aguascalientes' };
+test('envío a domicilio exige una dirección válida antes de buscar la tarifa', async () => {
+  consultas = [];
+  for (const envio of [undefined, { ...direccionValida, calle: '  ' }, { ...direccionValida, cp: '2000' },
+    { ...direccionValida, telefono: '12345' }, { ...direccionValida, referencias: 'x'.repeat(301) }]) {
+    assert.equal((await crearVentaCon({ idtarifa: 1, envio })).status, 400, JSON.stringify(envio));
+  }
+  assert.match((await crearVentaCon({ idtarifa: 1, envio: { ...direccionValida, cp: 'abcde' } })).body.message, /código postal/);
   assert.equal(consultas.length, 0);
 });
 test('cancelar llama al procedimiento y devuelve su motivo de error', async () => {

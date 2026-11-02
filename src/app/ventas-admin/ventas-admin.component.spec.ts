@@ -67,22 +67,31 @@ describe('Historial administrativo', () => {
     expect(component.siguienteEtapa({ ...venta, estadopedido: 'Entregado' })).toBeNull();
     expect(component.siguienteEtapa({ ...venta, estadopedido: 'CANCELADO' })).toBeNull();
   });
-  it('pide paquetería y guía antes de marcar "En tránsito"', () => {
+  it('envío a domicilio: pide la guía (con la paquetería del cliente) antes de marcar "En tránsito"', () => {
     spyOn(window, 'confirm').and.returnValue(true);
     servicio.actualizarEstado.and.returnValue(of({ idventa: 5, estadopedido: 'En tránsito', paqueteria: 'DHL', numero_guia: 'AB123456' }));
     const component = TestBed.createComponent(VentasAdminComponent).componentInstance;
-    const enPreparacion = { ...venta, estadopedido: 'En preparación' };
+    const enPreparacion: Venta = { ...venta, estadopedido: 'En preparación', envio_calle: 'Av. Madero', paqueteria: 'DHL' };
     expect(component.requiereGuia(enPreparacion)).toBeTrue();
     component.avanzarEstado(enPreparacion);
     expect(servicio.actualizarEstado).not.toHaveBeenCalled();
     expect(component.errorDetalle).toContain('número de guía');
-    component.paqueteria = 'DHL';
     component.numeroGuia = ' AB123456 ';
     component.avanzarEstado(enPreparacion);
     expect(servicio.actualizarEstado).toHaveBeenCalledWith(5, 'En tránsito', { paqueteria: 'DHL', numeroGuia: 'AB123456' });
     expect(enPreparacion.estadopedido).toBe('En tránsito');
     expect(component.urlRastreo({ ...enPreparacion, paqueteria: 'DHL', numero_guia: 'AB123456' })).toContain('tracking-id=AB123456');
     expect(component.puedeCancelar({ ...venta, estadopedido: 'En tránsito' })).toBeFalse();
+  });
+  it('punto medio: marca "En tránsito" sin pedir guía', () => {
+    spyOn(window, 'confirm').and.returnValue(true);
+    servicio.actualizarEstado.and.returnValue(of({ idventa: 5, estadopedido: 'En tránsito', paqueteria: null, numero_guia: null }));
+    const component = TestBed.createComponent(VentasAdminComponent).componentInstance;
+    const enPreparacion: Venta = { ...venta, estadopedido: 'En preparación' };
+    expect(component.requiereGuia(enPreparacion)).toBeFalse();
+    component.avanzarEstado(enPreparacion);
+    expect(servicio.actualizarEstado).toHaveBeenCalledWith(5, 'En tránsito', undefined);
+    expect(enPreparacion.estadopedido).toBe('En tránsito');
   });
   it('cancela el pedido, actualiza la lista y oculta las acciones', () => {
     spyOn(window, 'confirm').and.returnValue(true);

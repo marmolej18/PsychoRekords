@@ -21,53 +21,101 @@
 
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-secondary text-white">
-                        <h5>1. Dirección de Envío</h5>
+                        <h5>1. ¿Cómo quieres recibir tu pedido?</h5>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted">Enviamos tu pedido por paquetería (DHL, Estafeta o Correos de México).
-                            Tomamos la dirección de tu perfil; puedes cambiarla solo para este pedido. El costo de
-                            envío fijo es de $80.00.</p>
+                        @if (errorOpciones) { <div class="alert alert-danger small p-2">{{ errorOpciones }}</div> }
+
+                        <h6 class="mt-1">Envío a domicilio (cualquier estado de la República)</h6>
+                        <div class="list-group mb-4" role="radiogroup" aria-label="Paqueterías">
+                            @for (t of tarifas; track t.idtarifa) {
+                            <label class="list-group-item d-flex gap-3 align-items-start"
+                                [class.border-primary]="f['entrega'].value === 'tarifa-' + t.idtarifa">
+                                <input class="form-check-input mt-1" type="radio" formControlName="entrega"
+                                    [value]="'tarifa-' + t.idtarifa">
+                                <span class="flex-grow-1">
+                                    <strong class="d-block">{{ t.paqueteria }} – {{ t.servicio }}</strong>
+                                    <span class="small text-muted">Llega en {{ t.dias_min }} a {{ t.dias_max }} días hábiles</span>
+                                </span>
+                                <span class="fw-bold text-nowrap">${{ t.precio | number: '1.2-2' }}</span>
+                            </label>
+                            } @empty {
+                            <p class="text-muted small">No hay paqueterías disponibles por ahora.</p>
+                            }
+                        </div>
+
+                        <h6>Entrega en punto medio (Aguascalientes)</h6>
+                        <div class="list-group" role="radiogroup" aria-label="Puntos medios">
+                            @for (p of puntos; track p.idpunto) {
+                            <label class="list-group-item d-flex gap-3 align-items-start"
+                                [class.border-primary]="f['entrega'].value === 'punto-' + p.idpunto">
+                                <input class="form-check-input mt-1" type="radio" formControlName="entrega"
+                                    [value]="'punto-' + p.idpunto">
+                                <span class="flex-grow-1">
+                                    <strong class="d-block">{{ p.nombrepunto }}</strong>
+                                    <span class="small text-muted d-block">{{ p.direccioncompleta }}</span>
+                                    @if (p.horarioatencion) { <span class="small text-muted">{{ p.horarioatencion }}</span> }
+                                </span>
+                                <span class="fw-bold text-success">Gratis</span>
+                            </label>
+                            } @empty {
+                            <p class="text-muted small">No hay puntos de entrega disponibles por ahora.</p>
+                            }
+                        </div>
+                        @if (pagoPaypalRealizado) {
+                        <p class="small text-muted mt-2 mb-0">La forma de entrega ya no se puede cambiar porque el pago ya se realizó.</p>
+                        }
+                    </div>
+                </div>
+
+                @if (esDomicilio) {
+                <div class="card shadow-sm mb-4" formGroupName="direccion">
+                    <div class="card-header bg-secondary text-white">
+                        <h5>Dirección de envío</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Tomamos la dirección de tu perfil; puedes cambiarla solo para este pedido.</p>
 
                         <div class="row g-3">
                             <div class="col-md-8">
                                 <label class="form-label" for="destinatario">Nombre de quien recibe</label>
                                 <input id="destinatario" class="form-control" formControlName="destinatario"
-                                    [class.is-invalid]="f['destinatario'].invalid && f['destinatario'].touched">
+                                    [class.is-invalid]="d['destinatario'].invalid && d['destinatario'].touched">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label" for="telefono">Teléfono (10 dígitos)</label>
                                 <input id="telefono" class="form-control" formControlName="telefono" inputmode="numeric"
-                                    maxlength="10" [class.is-invalid]="f['telefono'].invalid && f['telefono'].touched">
+                                    maxlength="10" [class.is-invalid]="d['telefono'].invalid && d['telefono'].touched">
                             </div>
                             <div class="col-md-8">
                                 <label class="form-label" for="calle">Calle</label>
                                 <input id="calle" class="form-control" formControlName="calle"
-                                    [class.is-invalid]="f['calle'].invalid && f['calle'].touched">
+                                    [class.is-invalid]="d['calle'].invalid && d['calle'].touched">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label" for="numero">Número</label>
                                 <input id="numero" class="form-control" formControlName="numero"
-                                    [class.is-invalid]="f['numero'].invalid && f['numero'].touched">
+                                    [class.is-invalid]="d['numero'].invalid && d['numero'].touched">
                             </div>
                             <div class="col-md-8">
                                 <label class="form-label" for="colonia">Colonia</label>
                                 <input id="colonia" class="form-control" formControlName="colonia"
-                                    [class.is-invalid]="f['colonia'].invalid && f['colonia'].touched">
+                                    [class.is-invalid]="d['colonia'].invalid && d['colonia'].touched">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label" for="cp">Código postal</label>
                                 <input id="cp" class="form-control" formControlName="cp" inputmode="numeric"
-                                    maxlength="5" [class.is-invalid]="f['cp'].invalid && f['cp'].touched">
+                                    maxlength="5" [class.is-invalid]="d['cp'].invalid && d['cp'].touched">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label" for="ciudad">Ciudad</label>
                                 <input id="ciudad" class="form-control" formControlName="ciudad"
-                                    [class.is-invalid]="f['ciudad'].invalid && f['ciudad'].touched">
+                                    [class.is-invalid]="d['ciudad'].invalid && d['ciudad'].touched">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label" for="estado">Estado</label>
                                 <input id="estado" class="form-control" formControlName="estado"
-                                    [class.is-invalid]="f['estado'].invalid && f['estado'].touched">
+                                    [class.is-invalid]="d['estado'].invalid && d['estado'].touched">
                             </div>
                             <div class="col-12">
                                 <label class="form-label" for="referencias">Referencias (opcional)</label>
@@ -82,6 +130,7 @@
                         }
                     </div>
                 </div>
+                }
 
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-secondary text-white">
@@ -102,7 +151,7 @@
 
                 <div class="d-grid gap-2 mt-4">
                     <button type="submit" class="btn btn-success btn-lg"
-                        [disabled]="checkoutForm.invalid || loading || !pagoPaypalRealizado">
+                        [disabled]="checkoutForm.invalid || !checkoutForm.getRawValue().entrega || loading || !pagoPaypalRealizado">
                         @if (loading) {
                         <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                         }
@@ -134,8 +183,11 @@
 
                     <div class="d-flex justify-content-between"><span>Subtotal:</span><span>${{ resumen.subtotal |
                             number: '1.2-2' }}</span></div>
-                    <div class="d-flex justify-content-between small text-muted"><span>Costo de Envío:</span><span>+ ${{
-                            resumen.costoEnvio | number: '1.2-2' }}</span></div>
+                    <div class="d-flex justify-content-between small text-muted"><span>Costo de Envío:</span>
+                        @if (!resumen.entregaElegida) { <span>Elige una opción</span> }
+                        @else if (resumen.costoEnvio === 0) { <span class="text-success">Gratis</span> }
+                        @else { <span>+ ${{ resumen.costoEnvio | number: '1.2-2' }}</span> }
+                    </div>
                     <div class="d-flex justify-content-between small text-muted"><span>IVA (16%):</span><span>+ ${{
                             resumen.iva | number: '1.2-2' }}</span></div>
 

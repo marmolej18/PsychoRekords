@@ -10,7 +10,7 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '32kb' }));
 
 // Importar rutas
 const productosRouter = require('./rutas/productos.rutas');
@@ -32,6 +32,6 @@ app.get('/', (req, res) => {
     res.send('API de PsychoRecords funcionando.');
 });
 
-app.listen(PORT, () => {
-    console.log(`Servidor Node.js corriendo en http://localhost:${PORT}`);
-});
+require('./seguridad/migrar').migrar().then(() => {
+    app.listen(PORT, () => console.log(`Servidor Node.js corriendo en http://localhost:${PORT}`));
+}).catch(error => { console.error('No se pudo preparar la seguridad de la base:', error.message); process.exitCode = 1; });

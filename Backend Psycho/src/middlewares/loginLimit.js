@@ -4,7 +4,6 @@ const cleanup = setInterval(() => { for (const [k,v] of buckets) if (v.until <= 
 cleanup.unref();
 function loginLimit(req, res, next) {
     const now = Date.now();
-    // Se limita la IP y la combinación IP/cuenta; no se bloquea globalmente una cuenta ajena.
     const keys = [[req.ip, 30], [`${req.ip}:${String(req.body?.correoElectronico || '').trim().toLowerCase().slice(0,100)}`, 5]];
     for (const [key, max] of keys) {
         const item = buckets.get(key);

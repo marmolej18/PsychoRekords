@@ -34,7 +34,7 @@ export class RegistroUsuarioComponent implements OnInit {
 
       // Contacto y Credenciales (ASUMIMOS CAMPO PASSWORD)
       correoElectronico: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(8)]], // Asumimos un mínimo de 6 caracteres
+      password: ['', [Validators.required, Validators.minLength(8)]],
       telefono: [''],
 
       // Dirección

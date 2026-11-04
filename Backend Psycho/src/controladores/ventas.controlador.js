@@ -142,7 +142,6 @@ const crearVenta = async (req, res) => {
         // --- INICIO DE LA TRANSACCIÓN ---
         await client.query('BEGIN');
 
-        // Los precios siempre se consultan en la base; el importe del navegador se ignora.
         const precios = await client.query('SELECT idprod, precio FROM producto WHERE idprod = ANY($1::int[]) ORDER BY idprod FOR UPDATE', [productos.map(p => p.idprod)]);
         let subtotalCentavos = 0;
         for (const item of productos) {

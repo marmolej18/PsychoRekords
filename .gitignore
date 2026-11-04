@@ -42,5 +42,4 @@ testem.log
 .DS_Store
 Thumbs.db
 
-# Pruebas locales de seguridad (no se publican)
 /Backend Psycho/pruebas-locales/

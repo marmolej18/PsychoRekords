@@ -86,14 +86,19 @@ export class CarritoService {
     this.saveCart(items);
   }
 
-  // actualiza las unidades de un producto respetando el stock maximo
+  // actualiza las unidades o elimina el producto si llega a 0
   actualizarCantidad(idProd: number, nuevaCantidad: number): void {
+    if (nuevaCantidad <= 0) {
+      this.eliminarProducto(idProd);
+      return;
+    }
+
     const items = this.itemsSubject.getValue();
     const item = items.find(i => i.producto.idprod === idProd);
     if (!item) return;
 
     const maxStock = Number(item.producto.cantstock) || 1;
-    item.cantidad = Math.max(1, Math.min(nuevaCantidad, maxStock));
+    item.cantidad = Math.min(nuevaCantidad, maxStock);
     this.itemsSubject.next(items);
     this.saveCart(items);
   }

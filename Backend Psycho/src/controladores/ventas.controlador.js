@@ -98,7 +98,11 @@ const resolverEntrega = async ({ idpunto, idtarifa, envio }) => {
 };
 
 const crearVenta = async (req, res) => {
-    const { idusuario, productos } = req.body;
+    const idusuario = req.usuario.idUsuario;
+    const productos = req.body?.productos;
+    if (!Array.isArray(productos) || !productos.length || productos.length > 100 || productos.some(p => !p || !Number.isSafeInteger(p.idprod) || p.idprod <= 0 || !Number.isSafeInteger(p.cantidad) || p.cantidad < 1 || p.cantidad > 100) || new Set(productos.map(p => p.idprod)).size !== productos.length) {
+        return res.status(400).json({ message: 'El carrito debe contener productos únicos y cantidades enteras entre 1 y 100.' });
+    }
 
     let entrega;
     try {
@@ -138,8 +142,18 @@ const crearVenta = async (req, res) => {
         // --- INICIO DE LA TRANSACCIÓN ---
         await client.query('BEGIN');
 
-        // Calcular el total de la venta
-        const totalVenta = productos.reduce((sum, item) => sum + (item.cantidad * item.precioUnitario), 0);
+        const precios = await client.query('SELECT idprod, precio FROM producto WHERE idprod = ANY($1::int[]) ORDER BY idprod FOR UPDATE', [productos.map(p => p.idprod)]);
+        let subtotalCentavos = 0;
+        for (const item of productos) {
+            const producto = precios.rows.find(p => p.idprod === item.idprod);
+            const centavos = Math.round(Number(producto?.precio) * 100);
+            if (!producto || !Number.isSafeInteger(centavos) || centavos <= 0) throw new Error('Producto o precio no disponible.');
+            item.precioUnitario = centavos / 100;
+            subtotalCentavos += centavos * item.cantidad;
+        }
+        const totalCentavos = subtotalCentavos + Math.round(subtotalCentavos * 0.16) + Math.round(Number(entrega.columnas.costo_envio) * 100);
+        if (!Number.isSafeInteger(totalCentavos) || totalCentavos <= 0 || totalCentavos > 9999999999) throw new Error('Importe fuera del límite permitido.');
+        const totalVenta = totalCentavos / 100;
 
         // 2. Insertar en la tabla Venta, con una copia de la entrega elegida (HU7.1).
         // Los nombres de columna salen de resolverEntrega (fijos en el código), nunca del body.

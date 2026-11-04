@@ -1,6 +1,9 @@
 // src/controladores/usuarios.controlador.js
 const db = require('../db');
 const jwt = require('jsonwebtoken');
+const { hashPassword, verifyPassword } = require('../seguridad/password');
+const { email } = require('../middlewares/validacion');
+const hashInexistente = hashPassword('cuenta-inexistente');
 
 /**
  * POST /api/usuarios/registro - Registrar un nuevo Usuario
@@ -16,7 +19,7 @@ const registrarUsuario = async (req, res) => {
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING "idusuario", "correoelectronico"`;
 
-    const values = [nombre, apellidoP, apellidoM, correoElectronico, password, telefono, CP, calle, colonia, numCasa, ciudad, estado];
+    const values = [nombre, apellidoP, apellidoM, correoElectronico, await hashPassword(password), telefono, CP, calle, colonia, numCasa, ciudad, estado];
 
     try {
         const existsResult = await db.query(
@@ -59,7 +62,8 @@ const getUsuarioById = async (req, res) => {
             return res.status(404).json({ message: 'Usuario no encontrado.' });
         }
 
-        res.status(200).json(result.rows[0]);
+        const { password: omitida, ...perfil } = result.rows[0];
+        res.status(200).json(perfil);
     } catch (error) {
         console.error(`Error al obtener usuario ${idUsuario}:`, error);
         res.status(500).json({ message: 'Error interno del servidor.' });
@@ -72,20 +76,20 @@ const getUsuarioById = async (req, res) => {
 const loginUsuario = async (req, res) => {
     const { correoElectronico, password } = req.body;
 
-    if (!correoElectronico || !password) {
+    if (!email(correoElectronico) || typeof password !== 'string' || !password || Buffer.byteLength(password) > 256) {
         return res.status(400).json({ message: 'El correo electrónico y la contraseña son obligatorios.' });
     }
 
     const queryText = `
-        SELECT "idusuario", "nombre", "apellidop", "apellidom", "correoelectronico", "rol"
+        SELECT "idusuario", "nombre", "apellidop", "apellidom", "correoelectronico", "rol", "password"
         FROM "usuario"
-        WHERE "correoelectronico" = $1 AND "password" = $2;
+        WHERE "correoelectronico" = $1;
     `;
 
     try {
-        const result = await db.query(queryText, [correoElectronico, password]);
+        const result = await db.query(queryText, [correoElectronico]);
 
-        if (result.rows.length === 0) {
+        if (!(await verifyPassword(password, result.rows[0]?.password || await hashInexistente))) {
             return res.status(401).json({ message: 'Correo o contraseña incorrectos.' });
         }
 

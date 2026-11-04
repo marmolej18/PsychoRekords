@@ -40,8 +40,7 @@
                         <div class="col-6 col-sm-2 text-center mt-2 mt-sm-0">
                             <div class="input-group input-group-sm justify-content-center">
                                 <button class="btn btn-outline-secondary" type="button"
-                                    (click)="cambiarCantidad(item, -1)"
-                                    [disabled]="item.cantidad <= 1">-</button>
+                                    (click)="cambiarCantidad(item, -1)">-</button>
                                 <span class="form-control text-center px-2" style="max-width: 44px;">{{ item.cantidad }}</span>
                                 <button class="btn btn-outline-secondary" type="button"
                                     (click)="cambiarCantidad(item, 1)"
@@ -93,7 +92,7 @@
 
                     <div class="d-flex justify-content-between mb-3 small text-muted">
                         <span>Costo de Envío:</span>
-                        <span>Se calcula en el checkout (gratis en puntos medios)</span>
+                        <span>+ ${{ COSTO_ENVIO | number: '1.2-2' }}</span>
                     </div>
 
                     <hr>

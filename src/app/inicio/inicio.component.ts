@@ -10,7 +10,7 @@ import { RouterModule } from '@angular/router';
   styleUrl: './inicio.component.css'
 })
 export class InicioComponent implements OnInit {
-    flag: boolean = false;
+    flag = false;
 
     ngOnInit(): void {
         const user: string | null = localStorage.getItem('currentUser');

@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 
 @Component({
@@ -19,7 +19,8 @@ export class LoginComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute
   ) { }
 
   ngOnInit(): void {
@@ -47,8 +48,12 @@ export class LoginComponent implements OnInit {
         this.loading = false;
         // Navegar a la página de inicio o al panel de admin si aplica
         const userRole = response.usuario.rol;
+        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+
         if (userRole === 'admin') {
           this.router.navigate(['/admin/dashboard']); // Redirigir a Admin Dashboard
+        } else if (returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//')) {
+          this.router.navigateByUrl(returnUrl);
         } else {
           this.router.navigate(['/inicio']);
         }

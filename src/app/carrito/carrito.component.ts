@@ -12,60 +12,65 @@ interface CarritoItem {
 }
 
 @Component({
-  selector: 'app-carrito',
-  standalone: true,
-  imports: [CommonModule, RouterModule],
-  templateUrl: './carrito.component.html',
-  styleUrls: ['./carrito.component.css']
+    selector: 'app-carrito',
+    standalone: true,
+    imports: [CommonModule, RouterModule],
+    templateUrl: './carrito.component.html',
+    styleUrls: ['./carrito.component.css']
 })
 export class CarritoComponent implements OnInit {
+    flag = false;
+    carritoItems$ = new Observable<CarritoItem[]>();
+    subtotal$ = new Observable<number>();
 
-  carritoItems$ = new Observable<CarritoItem[]>();
-  subtotal$ = new Observable<number>();
+    IVA_PORCENTAJE = 0.16; // 16% de IVA
+    COSTO_ENVIO = 80.00;   // Costo fijo de envío
 
-  IVA_PORCENTAJE = 0.16; // 16% de IVA
-  COSTO_ENVIO = 80.00;   // Costo fijo de envío
+    constructor(private carritoService: CarritoService) { }
 
-  constructor(
-    private carritoService: CarritoService
-  ) { }
+    ngOnInit(): void {
+        this.carritoItems$ = this.carritoService.items$;
+        this.subtotal$ = this.carritoService.getSubtotal();
 
-  ngOnInit(): void {
-    this.carritoItems$ = this.carritoService.items$;
-    this.subtotal$ = this.carritoService.getSubtotal();
-  }
-
-  // suma o resta unidades y elimina el producto si baja a 0
-  cambiarCantidad(item: CarritoItem, delta: number): void {
-    const nueva = item.cantidad + delta;
-    if (nueva <= item.producto.cantstock) {
-      this.carritoService.actualizarCantidad(item.producto.idprod, nueva);
+        const user: string | null = localStorage.getItem('currentUser');
+        if(user){
+            this.flag = true;
+        } else {
+            this.flag = false;
+        }
     }
-  }
 
-  eliminarItem(idProd: number): void {
-    if (confirm('¿Estás seguro de que deseas eliminar este producto del carrito?')) {
-      this.carritoService.eliminarProducto(idProd);
+    // suma o resta unidades y elimina el producto si baja a 0
+    cambiarCantidad(item: CarritoItem, delta: number): void {
+        const nueva = item.cantidad + delta;
+        if (nueva <= item.producto.cantstock) {
+            this.carritoService.actualizarCantidad(item.producto.idprod, nueva);
+        }
     }
-  }
 
-  vaciarCarrito(): void {
-    if (confirm('¿Estás seguro de que deseas vaciar todo el carrito?')) {
-      this.carritoService.vaciarCarrito();
+    eliminarItem(idProd: number): void {
+        if (confirm('¿Estás seguro de que deseas eliminar este producto del carrito?')) {
+            this.carritoService.eliminarProducto(idProd);
+        }
     }
-  }
 
-  calcularIVA(subtotal: number): number {
-    return subtotal * this.IVA_PORCENTAJE;
-  }
+    vaciarCarrito(): void {
+        if (confirm('¿Estás seguro de que deseas vaciar todo el carrito?')) {
+            this.carritoService.vaciarCarrito();
+        }
+    }
 
-  calcularTotal(subtotal: number, iva: number): number {
-    return subtotal + iva + this.COSTO_ENVIO;
-  }
+    calcularIVA(subtotal: number): number {
+        return subtotal * this.IVA_PORCENTAJE;
+    }
 
-  onImageError(event: Event): void {
-    const img = event.target as HTMLImageElement;
-    img.src = 'logo.png';
-    img.onerror = null;
-  }
+    calcularTotal(subtotal: number, iva: number): number {
+        return subtotal + iva + this.COSTO_ENVIO;
+    }
+
+    onImageError(event: Event): void {
+        const img = event.target as HTMLImageElement;
+        img.src = 'logo.png';
+        img.onerror = null;
+    }
 }

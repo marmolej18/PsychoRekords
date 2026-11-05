@@ -9,16 +9,6 @@ import { RouterModule } from '@angular/router';
   templateUrl: './inicio.component.html',
   styleUrl: './inicio.component.css'
 })
-export class InicioComponent implements OnInit {
-    flag = false;
+export class InicioComponent{
 
-    ngOnInit(): void {
-        const user: string | null = localStorage.getItem('currentUser');
-        console.log(user)
-        if(user){
-            this.flag = true;
-        } else {
-            this.flag = false;
-        }
-    }
 }

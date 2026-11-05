@@ -1,5 +1,5 @@
 <div class="container py-4">
-    <h1 class="mb-4">🛒 Mi Carrito de Compras</h1>
+    <h1 class="mb-4">Mi Carrito de Compras</h1>
     <hr>
 
     @if (carritoItems$ | async; as items) {
@@ -116,7 +116,7 @@
     </div>
     } @else {
     <div class="alert alert-info text-center p-5">
-        <h4 class="alert-heading">Tu carrito está vacío 😢</h4>
+        <h4 class="alert-heading">Tu carrito está vacío</h4>
         <p>Parece que aún no has añadido ningún producto. Explora nuestro catálogo y encuentra tu próxima joya musical.
         </p>
         <a [routerLink]="['/catalogo']" class="btn btn-primary mt-3">Ir al Catálogo</a>

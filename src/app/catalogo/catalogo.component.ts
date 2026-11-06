@@ -50,13 +50,12 @@ export class CatalogoComponent implements OnInit, OnDestroy {
         } else {
             this.flag = false;
         }
-        // escuchar cambios del carrito para descontar el stock en tiempo real
+        // registrar cuantas unidades lleva en el carrito para validar el tope
         this.carritoSub = this.carritoService.items$.subscribe(items => {
             this.cantidadesEnCarrito.clear();
             items.forEach(item => {
                 this.cantidadesEnCarrito.set(item.producto.idprod, item.cantidad);
             });
-            this.aplicarFiltros();
         });
 
         this.cargarProductos(true);
@@ -108,10 +107,9 @@ export class CatalogoComponent implements OnInit, OnDestroy {
         });
     }
 
-    // calcula el stock real restando lo que ya está en el carrito
+    // devuelve el stock real de la base de datos (solo baja al confirmar la compra)
     getStockDisponible(producto: Producto): number {
-        const enCarrito = this.cantidadesEnCarrito.get(producto.idprod) || 0;
-        return Math.max(0, producto.cantstock - enCarrito);
+        return producto.cantstock;
     }
 
     onSearchChange(termino: string): void {
@@ -161,10 +159,16 @@ export class CatalogoComponent implements OnInit, OnDestroy {
         this.aplicarFiltros();
     }
 
-    // agrega una unidad validando el stock disponible en tiempo real
+    // agrega una unidad sin superar el stock disponible
     agregarAlCarrito(producto: Producto): void {
-        if (this.getStockDisponible(producto) <= 0) {
+        if (producto.cantstock <= 0) {
             this.showMessage(producto.idprod, 'Stock agotado.', 'danger');
+            return;
+        }
+
+        const enCarrito = this.cantidadesEnCarrito.get(producto.idprod) || 0;
+        if (enCarrito >= producto.cantstock) {
+            this.showMessage(producto.idprod, 'Límite de stock alcanzado en tu carrito.', 'danger');
             return;
         }
 

@@ -132,10 +132,19 @@
                                 {{ getItemMessage(producto.idprod) }}
                             </div>
                             } @else {
-                            <button (click)="agregarAlCarrito(producto)" class="btn btn-outline-primary w-100"
-                                [disabled]="getStockDisponible(producto) <= 0">
-                                <i class="bi bi-cart-plus me-1"></i>
-                                {{ getStockDisponible(producto) <= 0 ? 'Sin Stock' : 'Añadir al Carrito' }} </button>
+                                @if (flag) {
+                                    <button (click)="agregarAlCarrito(producto)" class="btn btn-outline-primary w-100"
+                                        [disabled]="getStockDisponible(producto) <= 0">
+                                        <i class="bi bi-cart-plus me-1"></i>
+                                        {{ getStockDisponible(producto) <= 0 ? 'Sin Stock' : 'Añadir al Carrito' }}
+                                    </button>
+                                } @else {
+                                    <button class="btn btn-outline-primary w-100" [routerLink]="['/login']" [queryParams]="{ returnUrl: '/catalogo' }"
+                                        [disabled]="getStockDisponible(producto) <= 0">
+                                        <i class="bi bi-cart-plus me-1"></i>
+                                        Iniciar sesión para comprar
+                                    </button>
+                                }
                             }
                         </div>
                     </div>

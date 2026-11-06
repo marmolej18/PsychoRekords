@@ -20,7 +20,7 @@ interface CarritoItem {
   styleUrls: ['./carrito.component.css']
 })
 export class CarritoComponent implements OnInit {
-
+  flag = false;
   carritoItems$ = new Observable<CarritoItem[]>();
   subtotal$ = new Observable<number>();
 
@@ -34,6 +34,13 @@ export class CarritoComponent implements OnInit {
   ngOnInit(): void {
     this.carritoItems$ = this.carritoService.items$;
     this.subtotal$ = this.carritoService.getSubtotal();
+
+    const user: string | null = localStorage.getItem('currentUser');
+    if (user) {
+      this.flag = true;
+    } else {
+      this.flag = false;
+    }
   }
 
   // suma o resta unidades y elimina el producto si baja a 0

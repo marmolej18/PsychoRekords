@@ -1,8 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { Observable } from 'rxjs';
-import { AuthService, UserAuth } from '../services/auth.service';
+import { AuthService } from '../services/auth.service';
 import { CarritoService } from '../services/carrito.service';
 
 @Component({

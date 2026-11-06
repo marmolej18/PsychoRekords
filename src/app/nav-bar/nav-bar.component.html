@@ -13,28 +13,29 @@
             </svg>
         </button>
         <div id="store-menu" class="menu-content" [class.is-open]="menuAbierto">
-            <ul class="main-links">
-                <li><a routerLink="/inicio" routerLinkActive="active" ariaCurrentWhenActive="page"
-                        (click)="cerrarMenu()">Inicio</a></li>
-                <li><a routerLink="/catalogo" routerLinkActive="active" ariaCurrentWhenActive="page"
-                        (click)="cerrarMenu()">Catálogo</a></li>
-                <li><a routerLink="/nosotros" routerLinkActive="active" ariaCurrentWhenActive="page"
-                        (click)="cerrarMenu()">Nosotros</a></li>
-                <li><a routerLink="/qya" routerLinkActive="active" ariaCurrentWhenActive="page"
-                        (click)="cerrarMenu()">FAQ</a></li>
-            </ul>
+            @let user = user$ | async;
+            @if (user?.rol !== 'admin') {
+                <ul class="main-links">
+                    <li><a routerLink="/inicio" routerLinkActive="active" ariaCurrentWhenActive="page" (click)="cerrarMenu()">Inicio</a></li>
+                    <li><a routerLink="/catalogo" routerLinkActive="active" ariaCurrentWhenActive="page" (click)="cerrarMenu()">Catálogo</a></li>
+                    <li><a routerLink="/nosotros" routerLinkActive="active" ariaCurrentWhenActive="page" (click)="cerrarMenu()">Nosotros</a></li>
+                    <li><a routerLink="/qya" routerLinkActive="active" ariaCurrentWhenActive="page" (click)="cerrarMenu()">FAQ</a></li>
+                </ul>
+            }
             <ul class="account-links">
-                <li>
-                    <a routerLink="/carrito" class="cart-button" (click)="cerrarMenu()" aria-label="Ver carrito">
-                        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <circle cx="9" cy="21" r="1" />
-                            <circle cx="20" cy="21" r="1" />
-                            <path d="M1 1h4l2.68 12.08a2 2 0 0 0 2 1.92h9.72a2 2 0 0 0 2-1.92L23 6H6" />
-                        </svg>
-                        @if (cartItemCount$ | async; as count) { <span class="cart-count">{{ count }}</span> }
-                    </a>
-                </li>
+                @if (user?.rol !== 'admin') {
+                    <li>
+                        <a routerLink="/carrito" class="cart-button" (click)="cerrarMenu()" aria-label="Ver carrito">
+                            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="9" cy="21" r="1" />
+                                <circle cx="20" cy="21" r="1" />
+                                <path d="M1 1h4l2.68 12.08a2 2 0 0 0 2 1.92h9.72a2 2 0 0 0 2-1.92L23 6H6" />
+                            </svg>
+                            @if (cartItemCount$ | async; as count) { <span class="cart-count">{{ count }}</span> }
+                        </a>
+                    </li>
+                }
                 <li class="dropdown profile">
                     @if (user$ | async; as user) {
                         <a class="nav-link" href="#" id="navbarDropdownProfile" role="button" data-bs-toggle="dropdown"
@@ -48,18 +49,16 @@
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownProfile">
                             <li><a class="dropdown-item" [routerLink]="['/perfil']">Mi Perfil</a></li>
-                            <li><hr class="dropdown-divider"></li>
                             @if (user.rol === 'admin') {
+                                <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" routerLink="/admin/inventario" (click)="cerrarMenu()">Inventario</a></li>
                                 <li><a class="dropdown-item" routerLink="/admin/ventas" (click)="cerrarMenu()">Historial de ventas</a></li>
                                 <li><a class="dropdown-item" routerLink="/admin/reportes" (click)="cerrarMenu()">Reportes financieros</a></li>
                                 <li><a class="dropdown-item" routerLink="/admin/usuarios" (click)="cerrarMenu()">Gestión de usuarios</a></li>
-                                <li><hr class="dropdown-divider"></li>
                             } @else {
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownProfile">
-                                    <li><a class="dropdown-item" routerLink="/mis-pedidos" (click)="cerrarMenu()">Mis Pedidos</a></li>
-                                </ul>
+                                <li><a class="dropdown-item" routerLink="/mis-pedidos" (click)="cerrarMenu()">Mis Pedidos</a></li>
                             }
+                            <li><hr class="dropdown-divider"></li>
                             <li><button class="dropdown-item" (click)="logout()">Cerrar Sesión</button></li>
                         </ul>
                     } @else {

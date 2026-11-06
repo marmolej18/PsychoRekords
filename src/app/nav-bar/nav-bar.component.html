@@ -14,14 +14,18 @@
         </button>
         <div id="store-menu" class="menu-content" [class.is-open]="menuAbierto">
             @let user = user$ | async;
-            @if (user?.rol !== 'admin') {
                 <ul class="main-links">
                     <li><a routerLink="/inicio" routerLinkActive="active" ariaCurrentWhenActive="page" (click)="cerrarMenu()">Inicio</a></li>
                     <li><a routerLink="/catalogo" routerLinkActive="active" ariaCurrentWhenActive="page" (click)="cerrarMenu()">Catálogo</a></li>
-                    <li><a routerLink="/nosotros" routerLinkActive="active" ariaCurrentWhenActive="page" (click)="cerrarMenu()">Nosotros</a></li>
-                    <li><a routerLink="/qya" routerLinkActive="active" ariaCurrentWhenActive="page" (click)="cerrarMenu()">FAQ</a></li>
+                    @if (user?.rol !== 'admin') {
+                        <li><a routerLink="/nosotros" routerLinkActive="active" ariaCurrentWhenActive="page" (click)="cerrarMenu()">Nosotros</a></li>
+                        <li><a routerLink="/qya" routerLinkActive="active" ariaCurrentWhenActive="page" (click)="cerrarMenu()">FAQ</a></li>
+                    }
+                    @else {
+                        <li><a routerLink="/admin/inventario" routerLinkActive="active" ariaCurrentWhenActive="page" (click)="cerrarMenu()">Inventario</a></li>
+                        <li><a routerLink="/admin/usuarios" routerLinkActive="active" ariaCurrentWhenActive="page" (click)="cerrarMenu()">Usuarios</a></li>
+                    }
                 </ul>
-            }
             <ul class="account-links">
                 @if (user?.rol !== 'admin') {
                     <li>
@@ -51,10 +55,8 @@
                             <li><a class="dropdown-item" [routerLink]="['/perfil']">Mi Perfil</a></li>
                             @if (user.rol === 'admin') {
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" routerLink="/admin/inventario" (click)="cerrarMenu()">Inventario</a></li>
                                 <li><a class="dropdown-item" routerLink="/admin/ventas" (click)="cerrarMenu()">Historial de ventas</a></li>
                                 <li><a class="dropdown-item" routerLink="/admin/reportes" (click)="cerrarMenu()">Reportes financieros</a></li>
-                                <li><a class="dropdown-item" routerLink="/admin/usuarios" (click)="cerrarMenu()">Gestión de usuarios</a></li>
                             } @else {
                                 <li><a class="dropdown-item" routerLink="/mis-pedidos" (click)="cerrarMenu()">Mis Pedidos</a></li>
                             }

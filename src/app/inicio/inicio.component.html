@@ -2,11 +2,21 @@
     <section class="Imagen-Bienvenida">
         <div class="Contenido-Bienvenida">
             <h1>PSYCHO REKORD'S</h1>
-            <p>Una experiencia musical única en formato físico para disfrutar al máximo tus géneros favoritos.</p>
+            @let user = user$ | async;
+            @if (user?.rol !== 'admin') {
+                <p>Una experiencia musical única en formato físico para disfrutar al máximo tus géneros favoritos.</p>
+            } @else {
+                <p>Bienvenido al panel de Administración</p>
+            }
         </div>
         <div class="opcInicio">
-            <button routerLink="/carrito">Comprar</button>
-            <button routerLink="/catalogo">Ver catalogo</button>
+            @if (user?.rol !== 'admin') {
+                <button routerLink="/carrito">Comprar</button>
+                <button routerLink="/catalogo">Ver catálogo</button>
+            } @else {
+                <button routerLink="/admin/inventario">Inventario</button>
+                <button routerLink="/catalogo">Ver catálogo</button>
+            }
         </div>
     </section>
 </main>

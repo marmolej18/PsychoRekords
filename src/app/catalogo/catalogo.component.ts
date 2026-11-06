@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -6,6 +6,7 @@ import { Subscription, interval } from 'rxjs';
 import Swal from 'sweetalert2';
 import { Producto, ProductosService } from '../services/productos.service';
 import { CarritoService } from '../services/carrito.service';
+import { AuthService } from '../services/auth.service';
 
 @Component({
     selector: 'app-catalogo',
@@ -15,7 +16,8 @@ import { CarritoService } from '../services/carrito.service';
     styleUrls: ['./catalogo.component.css']
 })
 export class CatalogoComponent implements OnInit, OnDestroy {
-    flag = false;
+    private authService = inject(AuthService);
+    user$ = this.authService.currentUser$;
     productos: Producto[] = [];
     productosFiltrados: Producto[] = [];
     loading = true;
@@ -45,12 +47,6 @@ export class CatalogoComponent implements OnInit, OnDestroy {
     ) { }
 
     ngOnInit(): void {
-        const user: string | null = localStorage.getItem('currentUser');
-        if(user){
-            this.flag = true;
-        } else {
-            this.flag = false;
-        }
         // registrar cuantas unidades lleva en el carrito para validar el tope
         this.carritoSub = this.carritoService.items$.subscribe(items => {
             this.cantidadesEnCarrito.clear();

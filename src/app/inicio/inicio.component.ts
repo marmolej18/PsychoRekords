@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-inicio',
@@ -9,4 +10,9 @@ import { RouterModule } from '@angular/router';
   templateUrl: './inicio.component.html',
   styleUrl: './inicio.component.css'
 })
-export class InicioComponent{ }
+export class InicioComponent implements OnInit {
+    private authService = inject(AuthService);
+    user$ = this.authService.currentUser$;
+
+    ngOnInit(): void {}
+}

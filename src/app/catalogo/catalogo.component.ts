@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subscription, interval } from 'rxjs';
+import Swal from 'sweetalert2';
 import { Producto, ProductosService } from '../services/productos.service';
 import { CarritoService } from '../services/carrito.service';
 
@@ -50,13 +51,12 @@ export class CatalogoComponent implements OnInit, OnDestroy {
         } else {
             this.flag = false;
         }
-        // escuchar cambios del carrito para descontar el stock en tiempo real
+        // registrar cuantas unidades lleva en el carrito para validar el tope
         this.carritoSub = this.carritoService.items$.subscribe(items => {
             this.cantidadesEnCarrito.clear();
             items.forEach(item => {
                 this.cantidadesEnCarrito.set(item.producto.idprod, item.cantidad);
             });
-            this.aplicarFiltros();
         });
 
         this.cargarProductos(true);
@@ -108,10 +108,9 @@ export class CatalogoComponent implements OnInit, OnDestroy {
         });
     }
 
-    // calcula el stock real restando lo que ya está en el carrito
+    // devuelve el stock real de la base de datos (solo baja al confirmar la compra)
     getStockDisponible(producto: Producto): number {
-        const enCarrito = this.cantidadesEnCarrito.get(producto.idprod) || 0;
-        return Math.max(0, producto.cantstock - enCarrito);
+        return producto.cantstock;
     }
 
     onSearchChange(termino: string): void {
@@ -161,15 +160,40 @@ export class CatalogoComponent implements OnInit, OnDestroy {
         this.aplicarFiltros();
     }
 
-    // agrega una unidad validando el stock disponible en tiempo real
+    // agrega una unidad sin superar el stock disponible y notifica con SweetAlert
     agregarAlCarrito(producto: Producto): void {
-        if (this.getStockDisponible(producto) <= 0) {
-            this.showMessage(producto.idprod, 'Stock agotado.', 'danger');
+        if (producto.cantstock <= 0) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Stock agotado',
+                text: 'Este producto no tiene unidades disponibles.',
+                timer: 2000,
+                showConfirmButton: false
+            });
+            return;
+        }
+
+        const enCarrito = this.cantidadesEnCarrito.get(producto.idprod) || 0;
+        if (enCarrito >= producto.cantstock) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Límite de stock alcanzado',
+                text: `Ya llevas las ${producto.cantstock} unidades disponibles de "${producto.titulo}" en tu carrito.`,
+                confirmButtonText: 'Entendido'
+            });
             return;
         }
 
         this.carritoService.agregarProducto(producto, 1);
-        this.showMessage(producto.idprod, '¡Añadido al carrito!', 'success');
+        Swal.fire({
+            icon: 'success',
+            title: '¡Añadido al carrito!',
+            text: producto.titulo,
+            toast: true,
+            position: 'top-end',
+            timer: 1800,
+            showConfirmButton: false
+        });
     }
 
     showMessage(idProd: number, message: string, type: 'success' | 'danger'): void {

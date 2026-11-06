@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subscription, interval } from 'rxjs';
+import Swal from 'sweetalert2';
 import { Producto, ProductosService } from '../services/productos.service';
 import { CarritoService } from '../services/carrito.service';
 
@@ -159,21 +160,40 @@ export class CatalogoComponent implements OnInit, OnDestroy {
         this.aplicarFiltros();
     }
 
-    // agrega una unidad sin superar el stock disponible
+    // agrega una unidad sin superar el stock disponible y notifica con SweetAlert
     agregarAlCarrito(producto: Producto): void {
         if (producto.cantstock <= 0) {
-            this.showMessage(producto.idprod, 'Stock agotado.', 'danger');
+            Swal.fire({
+                icon: 'error',
+                title: 'Stock agotado',
+                text: 'Este producto no tiene unidades disponibles.',
+                timer: 2000,
+                showConfirmButton: false
+            });
             return;
         }
 
         const enCarrito = this.cantidadesEnCarrito.get(producto.idprod) || 0;
         if (enCarrito >= producto.cantstock) {
-            this.showMessage(producto.idprod, 'Límite de stock alcanzado en tu carrito.', 'danger');
+            Swal.fire({
+                icon: 'warning',
+                title: 'Límite de stock alcanzado',
+                text: `Ya llevas las ${producto.cantstock} unidades disponibles de "${producto.titulo}" en tu carrito.`,
+                confirmButtonText: 'Entendido'
+            });
             return;
         }
 
         this.carritoService.agregarProducto(producto, 1);
-        this.showMessage(producto.idprod, '¡Añadido al carrito!', 'success');
+        Swal.fire({
+            icon: 'success',
+            title: '¡Añadido al carrito!',
+            text: producto.titulo,
+            toast: true,
+            position: 'top-end',
+            timer: 1800,
+            showConfirmButton: false
+        });
     }
 
     showMessage(idProd: number, message: string, type: 'success' | 'danger'): void {

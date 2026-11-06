@@ -1,4 +1,3 @@
-// src/app/features/productos/carrito/carrito.component.ts
 import { Component, OnInit } from '@angular/core';
 import { Observable } from 'rxjs';
 import Swal from 'sweetalert2';

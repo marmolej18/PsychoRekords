@@ -1,24 +1,24 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
 import { InicioComponent } from './inicio.component';
+import { TEST_PROVIDERS } from '../testing/test-providers';
 
 describe('InicioComponent', () => {
-  let component: InicioComponent;
-  let fixture: ComponentFixture<InicioComponent>;
+    let component: InicioComponent;
+    let fixture: ComponentFixture<InicioComponent>;
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [InicioComponent],
-      providers: [provideRouter([])]
-    })
-    .compileComponents();
+    beforeEach(async () => {
+        await TestBed.configureTestingModule({
+            imports: [InicioComponent],
+            providers: [...TEST_PROVIDERS]
+        })
+        .compileComponents();
 
-    fixture = TestBed.createComponent(InicioComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  });
+        fixture = TestBed.createComponent(InicioComponent);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+    });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
+    it('should create', () => {
+        expect(component).toBeTruthy();
+    });
 });

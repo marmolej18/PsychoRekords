@@ -1,8 +1,11 @@
 .detallesLayout{
     display: flex;
     flex-direction: row;
+    justify-content: center;
+    align-items: center;
     gap: 20px;
-
+    margin: 20px;
+    min-height: 70vh;
 }
 
 .detallesInfo > h1 {
@@ -18,6 +21,16 @@
 }
 
 .imgDetalles{
-    width: 50%;
+    max-width: 30%;
     height: auto;
+}
+
+@media screen and (max-width: 768px){
+    .detallesLayout{
+        flex-direction: column;
+    }
+
+    .imgDetalles{
+        max-width: 50%;
+    }
 }

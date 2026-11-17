@@ -1,0 +1,11 @@
+/* Contenedor de la gráfica: ngx-charts toma el ancho y alto de este elemento */
+.grafica-trazabilidad {
+  width: 100%;
+  height: 400px;
+}
+
+@media (max-width: 576px) {
+  .grafica-trazabilidad {
+    height: 300px;
+  }
+}

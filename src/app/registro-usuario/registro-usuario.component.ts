@@ -3,6 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import {
+  limpiarOpcional, validadoresEmail, validadoresNombre, validadoresTelefono
+} from '../validadores/usuario.validators';
 
 @Component({
   selector: 'app-registro-usuario',
@@ -28,14 +31,14 @@ export class RegistroUsuarioComponent implements OnInit {
     // Inicializa el formulario con todos los campos de la tabla Usuario
     this.registroForm = this.fb.group({
       // Datos Personales
-      nombre: ['', Validators.required],
-      apellidoP: ['', Validators.required],
-      apellidoM: [''], // Opcional
+      nombre: ['', validadoresNombre(true)],
+      apellidoP: ['', validadoresNombre(true)],
+      apellidoM: ['', validadoresNombre(false)], // Opcional
 
       // Contacto y Credenciales (ASUMIMOS CAMPO PASSWORD)
-      correoElectronico: ['', [Validators.required, Validators.email]],
+      correoElectronico: ['', validadoresEmail],
       password: ['', [Validators.required, Validators.minLength(8)]],
-      telefono: [''],
+      telefono: ['', validadoresTelefono],
 
       // Dirección
       CP: [''],
@@ -60,7 +63,18 @@ export class RegistroUsuarioComponent implements OnInit {
     this.loading = true;
 
     // Tu API de Node.js espera todos estos campos en el cuerpo (body)
-    this.http.post<any>(this.apiUrl, this.registroForm.value).subscribe({
+    // Recortar espacios sobrantes antes de enviar
+    const v = this.registroForm.value;
+    const datos = {
+      ...v,
+      nombre: v.nombre.trim(),
+      apellidoP: v.apellidoP.trim(),
+      apellidoM: limpiarOpcional(v.apellidoM),
+      correoElectronico: v.correoElectronico.trim(),
+      telefono: limpiarOpcional(v.telefono)
+    };
+
+    this.http.post<any>(this.apiUrl, datos).subscribe({
       next: (response) => {
         this.loading = false;
         this.successMessage = response.message || 'Registro exitoso. Serás redirigido al inicio de sesión.';

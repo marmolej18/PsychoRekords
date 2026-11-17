@@ -214,26 +214,31 @@ const updateUser = async (req, res) => {
             return res.status(409).json({ message: 'El correo electrónico ya pertenece a otra cuenta.' });
         }
 
+        // Los campos de dirección solo se actualizan si vienen en la petición;
+        // si se omiten, se conserva el valor actual (el panel de admin no los envía).
+        const viene = campo => Object.prototype.hasOwnProperty.call(req.body, campo);
+
         const result = await db.query(`
-            UPDATE "usuario" SET 
-                nombre = $1, 
-                "apellidop" = $2, 
-                "apellidom" = $3, 
-                "correoelectronico" = $4, 
-                telefono = $5, 
-                rol = $6, 
-                "cp" = $7, 
-                calle = $8, 
-                colonia = $9, 
-                "numcasa" = $10, 
-                ciudad = $11, 
-                estado = $12
-            WHERE 
+            UPDATE "usuario" SET
+                nombre = $1,
+                "apellidop" = $2,
+                "apellidom" = $3,
+                "correoelectronico" = $4,
+                telefono = $5,
+                rol = $6,
+                "cp" = CASE WHEN $14 THEN $7 ELSE "cp" END,
+                calle = CASE WHEN $15 THEN $8 ELSE calle END,
+                colonia = CASE WHEN $16 THEN $9 ELSE colonia END,
+                "numcasa" = CASE WHEN $17 THEN $10 ELSE "numcasa" END,
+                ciudad = CASE WHEN $18 THEN $11 ELSE ciudad END,
+                estado = CASE WHEN $19 THEN $12 ELSE estado END
+            WHERE
                 "idusuario" = $13
             RETURNING "idusuario"
         `, [
             nombre, apellidoP, apellidoM, correoElectronico,
-            telefono, rol, CP, calle, colonia, numCasa, ciudad, estado, id
+            telefono, rol, CP, calle, colonia, numCasa, ciudad, estado, id,
+            viene('CP'), viene('calle'), viene('colonia'), viene('numCasa'), viene('ciudad'), viene('estado')
         ]);
 
         if (result.rowCount === 0) {

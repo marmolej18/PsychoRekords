@@ -2,6 +2,14 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
+export interface MetricasTienda {
+  periodo: string; // 'YYYY-MM' del mes actual
+  ventasMes: { ingresos: number; pedidos: number };
+  ventasMesAnterior: { ingresos: number; pedidos: number };
+  usuarios: { total: number; clientes: number; admins: number };
+  productoTopMes: { idprod: number; titulo: string; artista: string; unidades: number } | null;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -22,6 +30,13 @@ export class ReportesService {
     return new HttpHeaders({
       'Content-Type': 'application/json'
     });
+  }
+
+  /**
+   * GET /api/reportes/metricas - Métricas básicas (ventas del mes, usuarios, producto top del mes)
+   */
+  getMetricas(): Observable<MetricasTienda> {
+    return this.http.get<MetricasTienda>(`${this.baseUrl}/metricas`);
   }
 
   /**

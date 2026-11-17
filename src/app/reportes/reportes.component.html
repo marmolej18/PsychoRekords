@@ -16,9 +16,127 @@
     <div class="alert alert-danger">{{ errorMessage }}</div>
   }
 
+  <div class="card shadow-sm mb-5" id="seccion-metricas">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-start gap-2">
+      <div>
+        <h5>📊 Métricas del Mes{{ nombreMes ? ' (' + nombreMes + ')' : '' }}</h5>
+        <span class="small">(No incluye pedidos cancelados)</span>
+      </div>
+      <button type="button" class="btn btn-light btn-sm text-nowrap" data-html2canvas-ignore
+        (click)="exportarPDF('seccion-metricas', 'metricas-del-mes')" [disabled]="exportando !== null || !metricas">
+        @if (exportando === 'seccion-metricas') {
+          <span class="spinner-border spinner-border-sm me-1"></span> Generando...
+        } @else {
+          Exportar PDF
+        }
+      </button>
+    </div>
+    <div class="card-body">
+      @if (loadingMetricas) {
+        <div class="text-center py-3"><span class="spinner-border spinner-border-sm me-2"></span> Cargando...</div>
+      } @else if (errorMetricas || !metricas) {
+        <div class="alert alert-danger mb-0">
+          No se pudieron cargar las métricas.
+          <button type="button" class="btn btn-outline-dark btn-sm ms-2" data-html2canvas-ignore (click)="cargarMetricas()">Reintentar</button>
+        </div>
+      } @else {
+        <div class="row g-3">
+          <div class="col-md-4">
+            <div class="metrica">
+              <div class="metrica-titulo">Ventas totales del mes</div>
+              <div class="metrica-valor">${{ metricas.ventasMes.ingresos | number: '1.2-2' }}</div>
+              <div class="metrica-detalle">
+                @if (variacionIngresos !== null) {
+                  <span [class]="variacionIngresos >= 0 ? 'text-success fw-bold' : 'text-danger fw-bold'">
+                    {{ variacionIngresos >= 0 ? '▲' : '▼' }} {{ (variacionIngresos >= 0 ? variacionIngresos : -variacionIngresos) | number: '1.0-1' }}%
+                  </span>
+                  vs. mes anterior (${{ metricas.ventasMesAnterior.ingresos | number: '1.2-2' }})
+                } @else {
+                  Sin ventas el mes anterior
+                }
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="metrica">
+              <div class="metrica-titulo">Pedidos del mes</div>
+              <div class="metrica-valor">{{ metricas.ventasMes.pedidos }}</div>
+              <div class="metrica-detalle">
+                Ticket promedio: ${{ ticketPromedio | number: '1.2-2' }}<br>
+                Mes anterior: {{ metricas.ventasMesAnterior.pedidos }}
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="metrica">
+              <div class="metrica-titulo">Más vendido del mes</div>
+              @if (metricas.productoTopMes; as top) {
+                <div class="metrica-valor metrica-producto" [title]="top.titulo">{{ top.titulo }}</div>
+                <div class="metrica-detalle">
+                  {{ top.artista }} · {{ top.unidades }} {{ top.unidades === 1 ? 'unidad' : 'unidades' }}
+                </div>
+              } @else {
+                <div class="metrica-valor">—</div>
+                <div class="metrica-detalle">Aún no hay ventas este mes</div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-5" id="seccion-usuarios">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-start gap-2">
+      <div>
+        <h5>👥 Usuarios Registrados</h5>
+        <span class="small">(Total de cuentas en la tienda)</span>
+      </div>
+      <button type="button" class="btn btn-light btn-sm text-nowrap" data-html2canvas-ignore
+        (click)="exportarPDF('seccion-usuarios', 'usuarios-registrados')" [disabled]="exportando !== null || !metricas">
+        @if (exportando === 'seccion-usuarios') {
+          <span class="spinner-border spinner-border-sm me-1"></span> Generando...
+        } @else {
+          Exportar PDF
+        }
+      </button>
+    </div>
+    <div class="card-body">
+      @if (loadingMetricas) {
+        <div class="text-center py-3"><span class="spinner-border spinner-border-sm me-2"></span> Cargando...</div>
+      } @else if (errorMetricas || !metricas) {
+        <div class="alert alert-danger mb-0">
+          No se pudieron cargar los usuarios registrados.
+          <button type="button" class="btn btn-outline-dark btn-sm ms-2" data-html2canvas-ignore (click)="cargarMetricas()">Reintentar</button>
+        </div>
+      } @else {
+        <div class="row g-3">
+          <div class="col-md-4">
+            <div class="metrica">
+              <div class="metrica-titulo">Total de usuarios</div>
+              <div class="metrica-valor">{{ metricas.usuarios.total }}</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="metrica">
+              <div class="metrica-titulo">Clientes</div>
+              <div class="metrica-valor">{{ metricas.usuarios.clientes }}</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="metrica">
+              <div class="metrica-titulo">Administradores</div>
+              <div class="metrica-valor">{{ metricas.usuarios.admins }}</div>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
   <div class="card shadow-sm mb-5" id="seccion-rentables">
     <div class="card-header bg-success text-white d-flex justify-content-between align-items-start gap-2">
-      <h5>🥇 Top Productos más Rentables (VISTA: vw_productos_rentables)</h5>
+      <h5>🥇 Productos más Vendidos (VISTA: vw_productos_rentables)</h5>
       <button type="button" class="btn btn-light btn-sm text-nowrap" data-html2canvas-ignore
         (click)="exportarPDF('seccion-rentables', 'productos-rentables')" [disabled]="exportando !== null">
         @if (exportando === 'seccion-rentables') {

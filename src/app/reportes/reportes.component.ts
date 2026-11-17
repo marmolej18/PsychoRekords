@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { ReportesService } from '../services/reportes.service';
+import { MetricasTienda, ReportesService } from '../services/reportes.service';
 import { FormsModule } from '@angular/forms';
 import { CommonModule, NgClass } from '@angular/common';
 import { NgxChartsModule } from '@swimlane/ngx-charts';
@@ -18,6 +18,10 @@ export class ReportesComponent implements OnInit {
 
   loadingRentables = true;
   loadingFormato = true;
+
+  metricas: MetricasTienda | null = null;
+  loadingMetricas = true;
+  errorMetricas = false;
 
   errorMessage: string | null = null;
   movimientoInventarioData: any[] = [];
@@ -46,9 +50,44 @@ export class ReportesComponent implements OnInit {
   constructor(private reportesService: ReportesService, private authService: AuthService) { }
 
   ngOnInit(): void {
+    this.cargarMetricas();
     this.cargarReporteRentables();
     this.cargarReporteVentasFormato();
-    this.cargarReporteRentables();
+  }
+
+  cargarMetricas(): void {
+    this.loadingMetricas = true;
+    this.errorMetricas = false;
+    this.reportesService.getMetricas().subscribe({
+      next: (data) => {
+        this.metricas = data;
+        this.loadingMetricas = false;
+      },
+      error: (err) => {
+        this.loadingMetricas = false;
+        this.errorMetricas = true;
+        console.error('Error en métricas:', err);
+      }
+    });
+  }
+
+  /** Nombre del mes de las métricas, p. ej. "noviembre de 2026". */
+  get nombreMes(): string {
+    if (!this.metricas) return '';
+    const [anio, mes] = this.metricas.periodo.split('-').map(Number);
+    return new Date(anio, mes - 1, 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
+  }
+
+  get ticketPromedio(): number {
+    const m = this.metricas?.ventasMes;
+    return m && m.pedidos > 0 ? m.ingresos / m.pedidos : 0;
+  }
+
+  /** Variación % de ingresos contra el mes anterior; null si el mes anterior no tuvo ventas. */
+  get variacionIngresos(): number | null {
+    const m = this.metricas;
+    if (!m || m.ventasMesAnterior.ingresos === 0) return null;
+    return (m.ventasMes.ingresos - m.ventasMesAnterior.ingresos) / m.ventasMesAnterior.ingresos * 100;
   }
 
 

@@ -1,3 +1,37 @@
+/* Tarjetas de métricas */
+.metrica {
+  height: 100%;
+  padding: 1rem;
+  border: 1px solid #dee2e6;
+  border-left: 4px solid #15B392;
+  border-radius: .5rem;
+  background-color: #fff;
+}
+.metrica-titulo {
+  font-size: .8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  color: #6c757d;
+}
+.metrica-valor {
+  margin: .25rem 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #031A16;
+}
+.metrica-producto {
+  font-size: 1.15rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.metrica-detalle {
+  font-size: .85rem;
+  color: #6c757d;
+}
+
 /* Contenedor de la gráfica: ngx-charts toma el ancho y alto de este elemento */
 .grafica-trazabilidad {
   width: 100%;

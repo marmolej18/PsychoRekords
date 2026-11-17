@@ -4,7 +4,7 @@ import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subscription, interval } from 'rxjs';
 import Swal from 'sweetalert2';
-import { Producto, ProductosService } from '../services/productos.service';
+import { CONDICIONES_PRODUCTO, Producto, ProductosService } from '../services/productos.service';
 import { CarritoService } from '../services/carrito.service';
 import { AuthService } from '../services/auth.service';
 
@@ -35,7 +35,7 @@ export class CatalogoComponent implements OnInit, OnDestroy {
 
     // listas dinamicas para los selectores
     generosDisponibles: string[] = [];
-    condicionesDisponibles: string[] = [];
+    condicionesDisponibles = CONDICIONES_PRODUCTO;
 
     private stockSub?: Subscription;
     private carritoSub?: Subscription;
@@ -85,10 +85,6 @@ export class CatalogoComponent implements OnInit, OnDestroy {
 
                 this.generosDisponibles = [...new Set(
                     this.productos.map(p => p.generomus).filter((g): g is string => !!g)
-                )].sort();
-
-                this.condicionesDisponibles = [...new Set(
-                    this.productos.map(p => p.condiciones).filter((c): c is string => !!c)
                 )].sort();
 
                 this.aplicarFiltros();

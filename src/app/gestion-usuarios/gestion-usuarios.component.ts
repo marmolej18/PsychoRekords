@@ -5,6 +5,12 @@ import { AuthService, UserAdmin } from '../services/auth.service';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
+import Swal from 'sweetalert2';
+
+import {
+  limpiarOpcional, validadoresEmail, validadoresNombre, validadoresTelefono
+} from '../validadores/usuario.validators';
 
 declare let bootstrap: any; // Para usar el modal de Bootstrap
 
@@ -45,11 +51,11 @@ export class GestionUsuariosComponent implements OnInit {
 
     // 2. Inicializar formulario (solo los campos editables por ahora)
     this.userForm = this.fb.group({
-      nombre: ['', Validators.required],
-      apellidoP: ['', Validators.required],
-      apellidoM: [''],
-      correoElectronico: ['', [Validators.required, Validators.email]],
-      telefono: [''],
+      nombre: ['', validadoresNombre(true)],
+      apellidoP: ['', validadoresNombre(true)],
+      apellidoM: ['', validadoresNombre(false)],
+      correoElectronico: ['', validadoresEmail],
+      telefono: ['', validadoresTelefono],
       rol: ['', Validators.required], // Permitir cambiar el rol
       // Puedes añadir aquí todos los campos de dirección si quieres que el admin los edite
     });
@@ -80,6 +86,7 @@ export class GestionUsuariosComponent implements OnInit {
    */
   abrirModalEditar(user: UserAdmin): void {
     this.currentUser = user;
+    this.userForm.reset();
     this.userForm.patchValue({
       nombre: user.nombre,
       apellidoP: user.apellidoP,
@@ -88,6 +95,10 @@ export class GestionUsuariosComponent implements OnInit {
       telefono: user.telefono,
       rol: user.rol,
       // ... otros campos
+    });
+    // Si algún dato guardado no cumple las validaciones, mostrar el error desde el inicio
+    Object.values(this.userForm.controls).forEach(c => {
+      if (c.invalid) c.markAsTouched();
     });
     this.showModal();
   }
@@ -131,7 +142,18 @@ export class GestionUsuariosComponent implements OnInit {
 
     this.formSubmitting = true;
 
-    this.authService.updateUser(this.currentUser.idUsuario, this.userForm.value).subscribe({
+    // Recortar espacios sobrantes antes de enviar
+    const v = this.userForm.value;
+    const datos = {
+      ...v,
+      nombre: v.nombre.trim(),
+      apellidoP: v.apellidoP.trim(),
+      apellidoM: limpiarOpcional(v.apellidoM),
+      correoElectronico: v.correoElectronico.trim(),
+      telefono: limpiarOpcional(v.telefono)
+    };
+
+    this.authService.updateUser(this.currentUser.idUsuario, datos).subscribe({
       next: (response) => {
         this.formSubmitting = false;
         this.successMessage = response.message || 'Usuario actualizado exitosamente.';
@@ -151,19 +173,34 @@ export class GestionUsuariosComponent implements OnInit {
    * Elimina un usuario (soft delete si es posible).
    */
   eliminarUsuario(id: number, nombre: string): void {
-    if (confirm(`¿Estás seguro de que quieres ELIMINAR al usuario ${nombre} (ID: ${id})? Esta acción es irreversible.`)) {
-      this.authService.deleteUser(id).subscribe({
-        next: (response) => {
-          this.successMessage = response.message || `Usuario ${nombre} eliminado exitosamente.`;
-          this.cargarUsuarios(); // Recargar la tabla
-          setTimeout(() => this.successMessage = null, 3000);
-        },
-        error: (err) => {
-          this.errorMessage = err.error?.message || 'Error al eliminar el usuario.';
-          console.error('Error al eliminar usuario:', err);
-        }
+    Swal.fire({
+      icon: 'warning',
+      title: '¿Eliminar usuario?',
+      text: `Se eliminará a ${nombre} (ID: ${id}). Esta acción no se puede deshacer.`,
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#dc3545',
+      reverseButtons: true,
+      focusCancel: true,
+      showLoaderOnConfirm: true,
+      allowOutsideClick: () => !Swal.isLoading(),
+      // Mantiene el diálogo abierto con un indicador de carga mientras responde el servidor
+      preConfirm: () => firstValueFrom(this.authService.deleteUser(id)).catch(err => {
+        console.error('Error al eliminar usuario:', err);
+        Swal.showValidationMessage(err.error?.message || 'Error al eliminar el usuario.');
+      })
+    }).then(result => {
+      if (!result.isConfirmed) return;
+      Swal.fire({
+        icon: 'success',
+        title: 'Usuario eliminado',
+        text: result.value?.message || `${nombre} fue eliminado exitosamente.`,
+        timer: 2000,
+        showConfirmButton: false
       });
-    }
+      this.cargarUsuarios(); // Recargar la tabla
+    });
   }
 
   get f() { return this.userForm.controls; }

@@ -106,18 +106,18 @@ export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
     });
 
     // 4. Prellenar con la dirección del perfil; el cliente puede cambiarla solo para este pedido.
-    this.authService.getUserById(Number(this.authService.getAuthHeader())).subscribe({
-      next: (perfil: any) => {
+    this.authService.getMiPerfil().subscribe({
+      next: perfil => {
         const valor = (v: unknown) => (typeof v === 'string' ? v : '');
         const telefono = valor(perfil.telefono).replace(/\D/g, '');
-        contacto.patchValue({ correo: valor(perfil.correoelectronico), telefono });
+        contacto.patchValue({ correo: valor(perfil.correoElectronico), telefono });
         direccion.patchValue({
-          destinatario: [perfil.nombre, perfil.apellidop, perfil.apellidom].filter(Boolean).join(' '),
+          destinatario: [perfil.nombre, perfil.apellidoP, perfil.apellidoM].filter(Boolean).join(' '),
           telefono,
           calle: valor(perfil.calle),
-          numero: valor(perfil.numcasa),
+          numero: valor(perfil.numCasa),
           colonia: valor(perfil.colonia),
-          cp: valor(perfil.cp),
+          cp: valor(perfil.CP),
           ciudad: valor(perfil.ciudad),
           estado: valor(perfil.estado),
         });

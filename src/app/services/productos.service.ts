@@ -3,6 +3,9 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
+// Lista fija de condiciones de producto (usada en el formulario de inventario y en el filtro del catálogo)
+export const CONDICIONES_PRODUCTO: readonly string[] = ['Nuevo', 'Usado - Excelente', 'Usado - Bueno', 'Usado - Regular'];
+
 // Interfaz que mapea la estructura de la tabla Producto
 export interface Producto {
   idprod: number;

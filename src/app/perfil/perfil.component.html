@@ -1,0 +1,163 @@
+<section class="container py-4 perfil">
+  <h1>Mi perfil</h1>
+  <p class="text-center text-muted mb-4">Consulta y actualiza tus datos personales y tu dirección de envío.</p>
+
+  @if (cargando) {
+    <p role="status" class="text-center p-4">
+      <span class="spinner-border spinner-border-sm me-2"></span> Cargando tu perfil...
+    </p>
+  } @else if (error) {
+    <div role="alert" class="alert alert-danger">
+      {{ error }} <button class="btn btn-outline-dark btn-sm" (click)="cargarPerfil()">Reintentar</button>
+    </div>
+  } @else if (perfil) {
+    <div class="card shadow-sm mb-4">
+      <div class="card-body d-flex align-items-center gap-3 flex-wrap">
+        <div class="avatar" aria-hidden="true">{{ iniciales }}</div>
+        <div class="flex-grow-1 min-w-0">
+          <h2 class="h5 mb-1 text-break">{{ nombreCompleto }}</h2>
+          <p class="mb-0 text-muted small text-break">{{ perfil.correoElectronico }}</p>
+        </div>
+        <span class="badge rol">{{ perfil.rol === 'admin' ? 'Administrador' : 'Cliente' }}</span>
+      </div>
+    </div>
+
+    <form [formGroup]="perfilForm" (ngSubmit)="guardar()" class="card shadow-sm" novalidate>
+      <div class="card-body p-4">
+        <h2 class="h5 seccion">Datos personales</h2>
+        <div class="row g-3 mb-4">
+          <div class="col-md-4">
+            <label for="nombre" class="form-label">Nombre *</label>
+            <input id="nombre" type="text" class="form-control" formControlName="nombre" maxlength="50"
+              autocomplete="given-name" [class.is-invalid]="invalido('nombre')">
+            <div class="invalid-feedback">{{ mensajeError('nombre') }}</div>
+          </div>
+          <div class="col-md-4">
+            <label for="apellidoP" class="form-label">Apellido paterno *</label>
+            <input id="apellidoP" type="text" class="form-control" formControlName="apellidoP" maxlength="50"
+              autocomplete="family-name" [class.is-invalid]="invalido('apellidoP')">
+            <div class="invalid-feedback">{{ mensajeError('apellidoP') }}</div>
+          </div>
+          <div class="col-md-4">
+            <label for="apellidoM" class="form-label">Apellido materno</label>
+            <input id="apellidoM" type="text" class="form-control" formControlName="apellidoM" maxlength="50"
+              [class.is-invalid]="invalido('apellidoM')">
+            <div class="invalid-feedback">{{ mensajeError('apellidoM') }}</div>
+          </div>
+        </div>
+
+        <h2 class="h5 seccion">Contacto</h2>
+        <div class="row g-3 mb-4">
+          <div class="col-md-6">
+            <label for="correoElectronico" class="form-label">Correo electrónico *</label>
+            <input id="correoElectronico" type="email" class="form-control" formControlName="correoElectronico"
+              maxlength="100" autocomplete="email" [class.is-invalid]="invalido('correoElectronico')">
+            <div class="invalid-feedback">{{ mensajeError('correoElectronico') }}</div>
+          </div>
+          <div class="col-md-6">
+            <label for="telefono" class="form-label">Teléfono</label>
+            <input id="telefono" type="tel" class="form-control" formControlName="telefono" maxlength="10"
+              inputmode="numeric" placeholder="10 dígitos" autocomplete="tel-national"
+              [class.is-invalid]="invalido('telefono')">
+            <div class="invalid-feedback">{{ mensajeError('telefono') }}</div>
+          </div>
+        </div>
+
+        @if (!esAdmin) {
+        <h2 class="h5 seccion">Dirección de envío</h2>
+        <p class="small text-muted">Se usa para prellenar tus pedidos; puedes cambiarla en cada compra.</p>
+        <div class="row g-3">
+          <div class="col-md-8">
+            <label for="calle" class="form-label">Calle</label>
+            <input id="calle" type="text" class="form-control" formControlName="calle" maxlength="100"
+              autocomplete="address-line1" [class.is-invalid]="invalido('calle')">
+            <div class="invalid-feedback">{{ mensajeError('calle') }}</div>
+          </div>
+          <div class="col-md-4">
+            <label for="numCasa" class="form-label">Número</label>
+            <input id="numCasa" type="text" class="form-control" formControlName="numCasa" maxlength="20"
+              [class.is-invalid]="invalido('numCasa')">
+            <div class="invalid-feedback">{{ mensajeError('numCasa') }}</div>
+          </div>
+          <div class="col-md-8">
+            <label for="colonia" class="form-label">Colonia</label>
+            <input id="colonia" type="text" class="form-control" formControlName="colonia" maxlength="100"
+              [class.is-invalid]="invalido('colonia')">
+            <div class="invalid-feedback">{{ mensajeError('colonia') }}</div>
+          </div>
+          <div class="col-md-4">
+            <label for="CP" class="form-label">Código postal</label>
+            <input id="CP" type="text" class="form-control" formControlName="CP" maxlength="5"
+              inputmode="numeric" autocomplete="postal-code" [class.is-invalid]="invalido('CP')">
+            <div class="invalid-feedback">{{ mensajeError('CP') }}</div>
+          </div>
+          <div class="col-md-6">
+            <label for="ciudad" class="form-label">Ciudad</label>
+            <input id="ciudad" type="text" class="form-control" formControlName="ciudad" maxlength="50"
+              autocomplete="address-level2" [class.is-invalid]="invalido('ciudad')">
+            <div class="invalid-feedback">{{ mensajeError('ciudad') }}</div>
+          </div>
+          <div class="col-md-6">
+            <label for="estado" class="form-label">Estado</label>
+            <input id="estado" type="text" class="form-control" formControlName="estado" maxlength="50"
+              autocomplete="address-level1" [class.is-invalid]="invalido('estado')">
+            <div class="invalid-feedback">{{ mensajeError('estado') }}</div>
+          </div>
+        </div>
+        }
+      </div>
+
+      <div class="card-footer d-flex flex-wrap justify-content-end gap-2 p-3">
+        <button type="button" class="btn btn-outline-secondary" (click)="descartarCambios()"
+          [disabled]="perfilForm.pristine || guardando">
+          Descartar cambios
+        </button>
+        <button type="submit" class="btn btn-perfil" [disabled]="perfilForm.pristine || perfilForm.invalid || guardando">
+          @if (guardando) {
+            <span class="spinner-border spinner-border-sm me-2"></span> Guardando...
+          } @else {
+            Guardar cambios
+          }
+        </button>
+      </div>
+    </form>
+
+    <form [formGroup]="passwordForm" (ngSubmit)="cambiarPassword()" class="card shadow-sm mt-4" novalidate>
+      <div class="card-body p-4">
+        <h2 class="h5 seccion">Cambiar contraseña</h2>
+        <!-- Campo oculto para que el administrador de contraseñas del navegador sepa a qué cuenta pertenece -->
+        <input type="email" class="d-none" [value]="perfil.correoElectronico" autocomplete="username" readonly tabindex="-1" aria-hidden="true">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label for="passwordActual" class="form-label">Contraseña actual *</label>
+            <input id="passwordActual" type="password" class="form-control" formControlName="passwordActual"
+              autocomplete="current-password" [class.is-invalid]="errorPassword('passwordActual')">
+            <div class="invalid-feedback">{{ errorPassword('passwordActual') }}</div>
+          </div>
+          <div class="col-md-4">
+            <label for="passwordNueva" class="form-label">Nueva contraseña *</label>
+            <input id="passwordNueva" type="password" class="form-control" formControlName="passwordNueva"
+              autocomplete="new-password" [class.is-invalid]="errorPassword('passwordNueva')">
+            <div class="invalid-feedback">{{ errorPassword('passwordNueva') }}</div>
+            <div class="form-text">Mínimo 8 caracteres.</div>
+          </div>
+          <div class="col-md-4">
+            <label for="confirmarPassword" class="form-label">Confirmar nueva contraseña *</label>
+            <input id="confirmarPassword" type="password" class="form-control" formControlName="confirmarPassword"
+              autocomplete="new-password" [class.is-invalid]="errorPassword('confirmarPassword')">
+            <div class="invalid-feedback">{{ errorPassword('confirmarPassword') }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer d-flex justify-content-end p-3">
+        <button type="submit" class="btn btn-perfil" [disabled]="passwordForm.invalid || cambiandoPassword">
+          @if (cambiandoPassword) {
+            <span class="spinner-border spinner-border-sm me-2"></span> Guardando...
+          } @else {
+            Cambiar contraseña
+          }
+        </button>
+      </div>
+    </form>
+  }
+</section>

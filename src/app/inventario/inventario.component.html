@@ -114,7 +114,12 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Condiciones</label>
-                            <input type="text" class="form-control" formControlName="condiciones">
+                            <select class="form-select" formControlName="condiciones">
+                                <option [ngValue]="null">Selecciona...</option>
+                                @for (c of condicionesDisponibles; track c) {
+                                <option [value]="c">{{ c }}</option>
+                                }
+                            </select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Precio *</label>

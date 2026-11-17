@@ -212,6 +212,39 @@ export class AuthService {
     }
 
     /**
+     * Obtiene el perfil del usuario con sesión iniciada.
+     * GET /api/usuarios/perfil
+     */
+    getMiPerfil(): Observable<UserAdmin> {
+        return this.http.get<UserAdmin>(`${this.apiUrl}/perfil`);
+    }
+
+    /**
+     * Actualiza los datos del usuario con sesión iniciada (sin rol ni contraseña)
+     * y refresca el nombre/correo guardados en la sesión para que el menú se actualice.
+     * PATCH /api/usuarios/perfil
+     */
+    actualizarMiPerfil(datos: Partial<UserAdmin>): Observable<{ message: string; usuario: UserAdmin }> {
+        return this.http.patch<{ message: string; usuario: UserAdmin }>(`${this.apiUrl}/perfil`, datos).pipe(
+            tap(({ usuario }) => {
+                const actual = this.userSubject.getValue();
+                if (!actual) return;
+                const user: UserAuth = { ...actual, nombre: usuario.nombre, correoElectronico: usuario.correoElectronico };
+                localStorage.setItem('currentUser', JSON.stringify(user));
+                this.setUserState(user);
+            })
+        );
+    }
+
+    /**
+     * Cambia la contraseña del usuario con sesión iniciada.
+     * PATCH /api/usuarios/perfil/password
+     */
+    cambiarMiPassword(passwordActual: string, passwordNueva: string): Observable<{ message: string }> {
+        return this.http.patch<{ message: string }>(`${this.apiUrl}/perfil/password`, { passwordActual, passwordNueva });
+    }
+
+    /**
      * Elimina/Desactiva un usuario.
      * DELETE /api/usuarios/:id
      */

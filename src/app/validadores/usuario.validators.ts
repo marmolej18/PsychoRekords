@@ -18,6 +18,8 @@ export const validadoresNombre = (obligatorio: boolean) => [
 ];
 export const validadoresEmail = [Validators.required, Validators.maxLength(100), Validators.pattern(PATRON_EMAIL)];
 export const validadoresTelefono = [Validators.pattern(PATRON_TELEFONO)];
+// Código postal de 5 dígitos, igual que en el checkout
+export const validadoresCP = [Validators.pattern(/^\d{5}$/)];
 
 /** Recorta un texto opcional; devuelve null si queda vacío. */
 export const limpiarOpcional = (v: string | null | undefined): string | null => v?.trim() || null;

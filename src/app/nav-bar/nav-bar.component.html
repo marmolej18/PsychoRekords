@@ -52,7 +52,7 @@
                             {{ user.nombre }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownProfile">
-                            <li><a class="dropdown-item" [routerLink]="['/perfil']">Mi Perfil</a></li>
+                            <li><a class="dropdown-item" routerLink="/perfil" (click)="cerrarMenu()">Mi Perfil</a></li>
                             @if (user.rol === 'admin') {
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" routerLink="/admin/ventas" (click)="cerrarMenu()">Historial de ventas</a></li>

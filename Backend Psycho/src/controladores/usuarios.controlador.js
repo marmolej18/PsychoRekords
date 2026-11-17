@@ -53,6 +53,12 @@ const registrarUsuario = async (req, res) => {
  */
 const getUsuarioById = async (req, res) => {
     const idUsuario = req.params.id;
+
+    // Solo el propio usuario o un administrador pueden consultar un perfil por ID
+    if (req.usuario.rol !== 'admin' && Number(idUsuario) !== Number(req.usuario.idUsuario)) {
+        return res.status(403).json({ message: 'No tienes permiso para consultar este perfil.' });
+    }
+
     const queryText = 'SELECT * FROM "usuario" WHERE "idusuario" = $1';
 
     try {
@@ -67,6 +73,136 @@ const getUsuarioById = async (req, res) => {
     } catch (error) {
         console.error(`Error al obtener usuario ${idUsuario}:`, error);
         res.status(500).json({ message: 'Error interno del servidor.' });
+    }
+};
+
+// Convierte una fila de la tabla usuario al formato camelCase que usa el frontend
+const mapearPerfil = row => ({
+    idUsuario: row.idusuario,
+    nombre: row.nombre,
+    apellidoP: row.apellidop,
+    apellidoM: row.apellidom,
+    correoElectronico: row.correoelectronico,
+    telefono: row.telefono,
+    rol: row.rol,
+    CP: row.cp,
+    calle: row.calle,
+    colonia: row.colonia,
+    numCasa: row.numcasa,
+    ciudad: row.ciudad,
+    estado: row.estado
+});
+
+/**
+ * GET /api/usuarios/perfil - Perfil del usuario autenticado (el ID sale del token)
+ */
+const getMiPerfil = async (req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT "idusuario", nombre, "apellidop", "apellidom", "correoelectronico", telefono, rol,
+                   "cp", calle, colonia, "numcasa", ciudad, estado
+            FROM "usuario" WHERE "idusuario" = $1`, [req.usuario.idUsuario]);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Usuario no encontrado.' });
+        }
+        res.json(mapearPerfil(result.rows[0]));
+    } catch (error) {
+        console.error('Error al obtener el perfil:', error);
+        res.status(500).json({ message: 'Error interno del servidor.' });
+    }
+};
+
+/**
+ * PATCH /api/usuarios/perfil - El usuario autenticado actualiza sus propios datos.
+ * No permite cambiar el rol ni la contraseña.
+ */
+const actualizarMiPerfil = async (req, res) => {
+    const id = req.usuario.idUsuario;
+    const { nombre, apellidoP, apellidoM, correoElectronico, telefono, CP, calle, colonia, numCasa, ciudad, estado } = req.body;
+
+    try {
+        const existsResult = await db.query(
+            'SELECT verificar_correo_existente($1, $2) AS exists',
+            [correoElectronico, id]
+        );
+        if (existsResult.rows[0].exists) {
+            return res.status(409).json({ message: 'El correo electrónico ya pertenece a otra cuenta.' });
+        }
+
+        const result = await db.query(`
+            UPDATE "usuario" SET
+                nombre = $1, "apellidop" = $2, "apellidom" = $3, "correoelectronico" = $4, telefono = $5,
+                "cp" = $6, calle = $7, colonia = $8, "numcasa" = $9, ciudad = $10, estado = $11
+            WHERE "idusuario" = $12
+            RETURNING "idusuario", nombre, "apellidop", "apellidom", "correoelectronico", telefono, rol,
+                      "cp", calle, colonia, "numcasa", ciudad, estado`,
+            [nombre, apellidoP, apellidoM, correoElectronico, telefono, CP, calle, colonia, numCasa, ciudad, estado, id]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Usuario no encontrado.' });
+        }
+        res.json({ message: 'Perfil actualizado exitosamente.', usuario: mapearPerfil(result.rows[0]) });
+    } catch (err) {
+        if (err.code === '23505') {
+            return res.status(409).json({ message: 'El correo electrónico ya está registrado en otra cuenta.' });
+        }
+        console.error(`Error al actualizar el perfil ${id}:`, err);
+        res.status(500).json({ message: 'Error interno del servidor al actualizar el perfil.' });
+    }
+};
+
+// Intentos fallidos de contraseña actual por usuario: máximo 5 cada 15 minutos
+const intentosPassword = new Map();
+const VENTANA_INTENTOS = 15 * 60 * 1000;
+const MAX_INTENTOS = 5;
+
+/**
+ * PATCH /api/usuarios/perfil/password - El usuario autenticado cambia su contraseña.
+ * Requiere la contraseña actual.
+ */
+const cambiarMiPassword = async (req, res) => {
+    const id = req.usuario.idUsuario;
+    const { passwordActual, passwordNueva } = req.body;
+    const longitudValida = p => typeof p === 'string' && p.length > 0 && Buffer.byteLength(p) <= 256;
+
+    if (!longitudValida(passwordActual) || !longitudValida(passwordNueva)) {
+        return res.status(400).json({ message: 'La contraseña actual y la nueva son obligatorias.' });
+    }
+    if (passwordNueva.length < 8) {
+        return res.status(400).json({ message: 'La nueva contraseña debe tener al menos 8 caracteres.' });
+    }
+    if (passwordNueva === passwordActual) {
+        return res.status(400).json({ message: 'La nueva contraseña debe ser diferente a la actual.' });
+    }
+
+    const ahora = Date.now();
+    const intento = intentosPassword.get(id);
+    if (intento && intento.hasta > ahora && intento.fallos >= MAX_INTENTOS) {
+        res.set('Retry-After', String(Math.ceil((intento.hasta - ahora) / 1000)));
+        return res.status(429).json({ message: 'Demasiados intentos. Espera unos minutos antes de volver a intentar.' });
+    }
+
+    try {
+        const result = await db.query('SELECT "password" FROM "usuario" WHERE "idusuario" = $1', [id]);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Usuario no encontrado.' });
+        }
+
+        if (!(await verifyPassword(passwordActual, result.rows[0].password))) {
+            const registro = intento && intento.hasta > ahora ? intento : { fallos: 0, hasta: ahora + VENTANA_INTENTOS };
+            registro.fallos++;
+            intentosPassword.set(id, registro);
+            return res.status(400).json({ message: 'La contraseña actual es incorrecta.' });
+        }
+
+        await db.query('UPDATE "usuario" SET "password" = $1 WHERE "idusuario" = $2', [await hashPassword(passwordNueva), id]);
+        intentosPassword.delete(id);
+        res.json({ message: 'Contraseña actualizada exitosamente.' });
+    } catch (err) {
+        console.error(`Error al cambiar la contraseña del usuario ${id}:`, err);
+        res.status(500).json({ message: 'Error interno del servidor al cambiar la contraseña.' });
     }
 };
 
@@ -286,5 +422,8 @@ module.exports = {
     logoutUsuario,
     getAllUsers,
     updateUser,
+    getMiPerfil,
+    actualizarMiPerfil,
+    cambiarMiPassword,
     deleteUser
 };

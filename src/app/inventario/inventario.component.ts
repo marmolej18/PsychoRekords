@@ -3,7 +3,7 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AuthService } from '../services/auth.service';
-import { Producto, ProductosService } from '../services/productos.service';
+import { CONDICIONES_PRODUCTO, Producto, ProductosService } from '../services/productos.service';
 import { Observable } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
@@ -33,6 +33,8 @@ export class InventarioComponent implements OnInit {
 
   // Opciones para los selectores
   formatos = ['Vinilo', 'CD', 'Cassette'];
+  // Lista fija compartida con el filtro de condición del catálogo
+  condicionesDisponibles = CONDICIONES_PRODUCTO;
   // Asumiendo que hay un catálogo de géneros, por ahora es libre.
 
   constructor(

@@ -1,6 +1,7 @@
 const path = require('path');
 const { Pool } = require('pg');
-require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+// quiet: dotenv 17 imprime un aviso con "tips" cada vez que carga el .env
+require('dotenv').config({ path: path.resolve(__dirname, '../.env'), quiet: true });
 
 // Configuración del pool de conexión
 const pool = new Pool({
@@ -11,9 +12,11 @@ const pool = new Pool({
     port: Number(process.env.DB_PORT) || 5432,
 });
 
-// Prueba de conexión 
-pool.on('connect', () => {
-    console.log('Cliente conectado a PostgreSQL.');
+// El pool abre y cierra conexiones solo (cierra las inactivas tras 10 s), así que no se registra
+// cada conexión: server.js avisa una sola vez, al arrancar, que la base está lista.
+// Un error en una conexión inactiva (p. ej., si PostgreSQL se reinicia) no debe tumbar el servidor.
+pool.on('error', (error) => {
+    console.error('Error en una conexión inactiva de PostgreSQL:', error.message);
 });
 
 // Exporta el pool para que otros módulos puedan hacer queries

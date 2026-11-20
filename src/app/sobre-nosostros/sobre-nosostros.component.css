@@ -1,4 +1,61 @@
+.title {
+    z-index: 2;
+}
+
 .cabeceraAbUs h1{
-    font-size: 7rem;
+    font-size: 5rem;
     margin: 20px;
+}
+
+.contenidoAboutUs p {
+    font-size: 20px;
+    text-align: justify;
+}
+
+@media screen and (max-width: 768px){
+    .cabeceraAbUs h1 {
+        font-size: 3rem;
+    }
+
+    .contenidoAboutUs p {
+        font-size: 1rem;
+    }
+}
+
+.contenedorAboutUs {
+    margin-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.cabeceraAbUs {
+    background-image: url(../../../public/banner_us.png);
+    background-attachment: fixed;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    position: relative;
+    color: var(--white);
+    height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.cabeceraAbUs::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 0;
+}
+
+.contenidoAboutUs {
+    width: 80%;
 }

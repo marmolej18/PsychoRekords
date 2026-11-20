@@ -5,8 +5,8 @@
     @if (purchaseComplete) {
     <div class="alert alert-success text-center p-5 animate__animated animate__fadeIn">
         <h3 class="alert-heading">¡Tu pedido ha sido confirmado!</h3>
-        <p class="fs-5">Tu número de orden es: **#{{ ventaExitosaData.idVenta }}**</p>
-        <p>Total pagado: **${{ ventaExitosaData.totalVenta | number: '1.2-2' }}**</p>
+        <p class="fs-5">Tu número de orden es: <strong>#{{ ventaExitosaData.idVenta }}</strong></p>
+        <p>Total pagado: <strong>${{ ventaExitosaData.totalVenta | number: '1.2-2' }}</strong></p>
         <p class="mb-0">Recibirás un correo electrónico con los detalles. Gracias por tu compra.</p>
         <a [routerLink]="['/mis-pedidos']" class="btn btn-primary mt-3">Ver Mis Pedidos</a>
     </div>

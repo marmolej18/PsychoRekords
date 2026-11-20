@@ -21,18 +21,13 @@
                             <div class="col-md-6">
                                 <label for="correoElectronico" class="form-label">Correo Electrónico *</label>
                                 <input type="email" class="form-control" id="correoElectronico"
-                                    formControlName="correoElectronico"
+                                    formControlName="correoElectronico" maxlength="100"
                                     [ngClass]="{'is-invalid': f['correoElectronico'].invalid && f['correoElectronico'].touched}">
-                                @if (f['correoElectronico'].errors && f['correoElectronico'].touched) {
                                 <div class="invalid-feedback">
-                                    @if (f['correoElectronico'].errors['required']) {
-                                    <span>El correo es obligatorio.</span>
-                                    }
-                                    @if (f['correoElectronico'].errors['email']) {
-                                    <span>Debe ser un correo válido.</span>
-                                    }
+                                    @if (f['correoElectronico'].hasError('required')) { El correo es obligatorio. }
+                                    @else if (f['correoElectronico'].hasError('maxlength')) { Máximo 100 caracteres. }
+                                    @else { Ingresa un correo válido, por ejemplo usuario&#64;dominio.com. }
                                 </div>
-                                }
                             </div>
                             <div class="col-md-6">
                                 <label for="password" class="form-label">Contraseña *</label>
@@ -51,7 +46,10 @@
                             </div>
                             <div class="col-md-6">
                                 <label for="telefono" class="form-label">Teléfono (Opcional)</label>
-                                <input type="text" class="form-control" id="telefono" formControlName="telefono">
+                                <input type="tel" class="form-control" id="telefono" formControlName="telefono"
+                                    maxlength="10" inputmode="numeric" placeholder="10 dígitos"
+                                    [ngClass]="{'is-invalid': f['telefono'].invalid && f['telefono'].touched}">
+                                <div class="invalid-feedback">El teléfono debe tener exactamente 10 dígitos, sin espacios ni guiones.</div>
                             </div>
                         </div>
 
@@ -59,23 +57,32 @@
                         <div class="row g-3">
                             <div class="col-md-4">
                                 <label for="nombre" class="form-label">Nombre *</label>
-                                <input type="text" class="form-control" id="nombre" formControlName="nombre"
+                                <input type="text" class="form-control" id="nombre" formControlName="nombre" maxlength="50"
                                     [ngClass]="{'is-invalid': f['nombre'].invalid && f['nombre'].touched}">
-                                @if (f['nombre'].errors && f['nombre'].touched) {
-                                <div class="invalid-feedback">El nombre es obligatorio.</div>
-                                }
+                                <div class="invalid-feedback">
+                                    @if (f['nombre'].hasError('required')) { El nombre es obligatorio. }
+                                    @else if (f['nombre'].hasError('maxlength')) { Máximo 50 caracteres. }
+                                    @else { Solo letras, espacios, guiones y apóstrofos. }
+                                </div>
                             </div>
                             <div class="col-md-4">
                                 <label for="apellidoP" class="form-label">Apellido Paterno *</label>
-                                <input type="text" class="form-control" id="apellidoP" formControlName="apellidoP"
+                                <input type="text" class="form-control" id="apellidoP" formControlName="apellidoP" maxlength="50"
                                     [ngClass]="{'is-invalid': f['apellidoP'].invalid && f['apellidoP'].touched}">
-                                @if (f['apellidoP'].errors && f['apellidoP'].touched) {
-                                <div class="invalid-feedback">El apellido paterno es obligatorio.</div>
-                                }
+                                <div class="invalid-feedback">
+                                    @if (f['apellidoP'].hasError('required')) { El apellido paterno es obligatorio. }
+                                    @else if (f['apellidoP'].hasError('maxlength')) { Máximo 50 caracteres. }
+                                    @else { Solo letras, espacios, guiones y apóstrofos. }
+                                </div>
                             </div>
                             <div class="col-md-4">
                                 <label for="apellidoM" class="form-label">Apellido Materno (Opcional)</label>
-                                <input type="text" class="form-control" id="apellidoM" formControlName="apellidoM">
+                                <input type="text" class="form-control" id="apellidoM" formControlName="apellidoM" maxlength="50"
+                                    [ngClass]="{'is-invalid': f['apellidoM'].invalid && f['apellidoM'].touched}">
+                                <div class="invalid-feedback">
+                                    @if (f['apellidoM'].hasError('maxlength')) { Máximo 50 caracteres. }
+                                    @else { Solo letras, espacios, guiones y apóstrofos. }
+                                </div>
                             </div>
                         </div>
 

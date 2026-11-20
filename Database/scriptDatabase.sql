@@ -1,3 +1,6 @@
+-- Creción de la BD
+CREATE DATABASE PsychoRekords;
+
 -- Tabla USUARIO
 CREATE TABLE Usuario (
     idUsuario SERIAL PRIMARY KEY,
@@ -29,7 +32,7 @@ CREATE TABLE Producto (
     precio NUMERIC(10, 2) NOT NULL -- Importante para guardar el precio (10 dígitos, 2 decimales)
 );
 
---Creación de la Tabla PUNTO_ENTREGA (NUEVA)
+--Creación de la Tabla PUNTO_ENTREGA
 CREATE TABLE PuntoEntrega (
     idPunto SERIAL PRIMARY KEY,
     nombrePunto VARCHAR(50) NOT NULL, -- Ej: Sucursal Centro
@@ -52,7 +55,7 @@ CREATE TABLE Venta (
     CONSTRAINT fk_venta_punto FOREIGN KEY (idPunto) REFERENCES PuntoEntrega(idPunto)
 );
 
--- 6. Creación de la Tabla DETALLE_VENTA (Los productos del carrito)
+-- Creación de la Tabla DETALLE_VENTA (Los productos del carrito)
 CREATE TABLE DetalleVenta (
     idDetalle SERIAL PRIMARY KEY,
     idVenta INT NOT NULL,
@@ -65,35 +68,31 @@ CREATE TABLE DetalleVenta (
     CONSTRAINT fk_detalle_producto FOREIGN KEY (idProd) REFERENCES Producto(idProd)
 );
 
-CREATE TABLE token_blocklist (----//para cierre de sesion seguro------
+---- Para cierre de sesion seguro ----
+CREATE TABLE token_blocklist (
     token TEXT PRIMARY KEY,
     expires_at TIMESTAMP NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_token_blocklist_expires ON token_blocklist(expires_at);
 
--- --- DATOS DE EJEMPLO (OPCIONALES PARA PROBAR) ---
+--- DATOS DE EJEMPLO (OPCIONALES PARA PROBAR) ---
 
 -- Insertar un Punto de Entrega
 INSERT INTO PuntoEntrega (nombrePunto, direccionCompleta, horarioAtencion) 
 VALUES ('Plaza Central', 'Av. Madero 123, Centro', 'Lun-Sab 10am-8pm');
 
--- Insertar un Producto
-INSERT INTO Producto (titulo, artista, generoMus, anioLanzam, formato, condiciones, cantStock, precio) 
-VALUES ('Abbey Road', 'The Beatles', 'Rock', 1969, 'Vinilo', 'Nuevo', 10, 550.00);
-
--- Insertar un Usuario
-INSERT INTO Usuario (nombre, apellidoP, correoElectronico) 
-VALUES ('Juan', 'Perez', 'juan@email.com');
-
-INSERT INTO Usuario (nombre, apellidoP, correoElectronico, "password", rol) 
-VALUES ('Enrique', 'Amador', 'kike@email.com', 'admin', 'admin');
-
-INSERT INTO Usuario (nombre, apellidoP, correoElectronico, "password", rol) 
-VALUES ('Enrique', 'Macias', 'kike2@email.com', 'admin', 'user');
-
-
-INSERT INTO Usuario (nombre, apellidoP, correoElectronico, "password", rol) 
-VALUES ('Kim', 'Marmolejo', 'kim@email.com', 'admin', 'admin');
+-- Insertar productos
+INSERT INTO Producto (titulo, artista, generoMus, anioLanzam, formato, condiciones, cantStock, precio) VALUES
+('The Dark Side of the Moon', 'Pink Floyd', 'Rock', 1973, 'Vinilo', 'Nuevo', 15, 620.00),
+('Back in Black', 'AC/DC', 'Hard Rock', 1980, 'Vinilo', 'Usado - Excelente', 8, 480.00),
+('Appetite for Destruction', 'Guns N Roses', 'Hard Rock', 1987, 'Cassette', 'Usado - Excelente', 5, 320.00),
+('Love Yourself: Tear', 'BTS', 'K-Pop', 2018, 'CD', 'Nuevo', 20, 450.00),
+('Map of the Soul: 7', 'BTS', 'K-Pop', 2020, 'CD', 'Nuevo', 18, 490.00),
+('Génesis', 'Peso Pluma', 'Corridos Tumbados', 2023, 'Vinilo', 'Nuevo', 12, 580.00),
+('Thriller', 'Michael Jackson', 'Pop', 1982, 'Cassette', 'Usado - Bueno', 4, 280.00),
+('Random Access Memories', 'Daft Punk', 'Electrónica', 2013, 'CD', 'Nuevo', 10, 380.00),
+('Master of Puppets', 'Metallica', 'Heavy Metal', 1986, 'CD', 'Nuevo', 14, 350.00),
+('First Howl', 'BOYNEXTDOOR', 'J-Pop', 2024, 'CD', 'Nuevo', 9, 420.00);
 
 CREATE OR REPLACE VIEW vw_historial_ventas AS
 SELECT 
@@ -160,11 +159,10 @@ JOIN
 JOIN
     producto P ON DV.idprod = P.idprod
 GROUP BY
-    ROLLUP(P.artista, P.formato) -- ¡La clave para subtotales!
+    ROLLUP(P.artista, P.formato) -- La clave para subtotales
 ORDER BY
     P.artista NULLS LAST, -- Pone el total general al final del artista
     P.formato NULLS LAST;
-
 
 -- Función de Procedimiento para Cancelar una Venta y Revertir el Inventario
 -- Debe ejecutarse desde el backend de Node.js
@@ -210,37 +208,25 @@ BEGIN
         UPDATE producto
         SET cantstock = cantstock + v_cantidad_devuelta
         WHERE idprod = v_id_prod;
-
-        -- (Opcional: Si implementaste un LOG, podrías insertar aquí el registro de devolución)
-
     END LOOP;
     
     CLOSE c_detalles;
 
-    -- 4. Marcar la venta como CANCELADA (Importante: NO la eliminamos, solo cambiamos el estado)
-    -- Si la eliminas (DELETE), pierdes la trazabilidad financiera.
+    -- 4. Marcar la venta como CANCELADA
     UPDATE venta
-    SET estadopedido = 'CANCELADO', 
-        -- Podrías añadir un campo 'fecha_cancelacion' = NOW()
+    SET estadopedido = 'CANCELADO',
         totalventa = 0 -- Se anula el valor financiero de la orden
     WHERE idventa = p_id_venta;
 
-    -- 5. Mensaje de éxito (implícito)
+    -- 5. Mensaje de éxito
     RAISE NOTICE 'Venta % cancelada y stock revertido con éxito.', p_id_venta;
 
 EXCEPTION
     WHEN OTHERS THEN
-        -- Si algo falla (ej. RAISE EXCEPTION), se hará un ROLLBACK automático
+        -- Si algo falla, se hará un ROLLBACK automático
         RAISE EXCEPTION 'Falló la cancelación de la venta %: %', p_id_venta, SQLERRM;
 END;
 $$;
-
-
-SELECT * FROM puntoentrega WHERE idpunto = 1;
-
-SELECT idventa, nombrepunto, direccioncompleta, estadopedido FROM vw_historial_ventas;
-SELECT * FROM puntoentrega WHERE nombrepunto = '*****';
-
 
 -- FUNCIÓN TRIGGER: Se ejecuta después de actualizar la tabla "venta"
 CREATE OR REPLACE FUNCTION fn_anular_venta_reporte()
@@ -274,7 +260,6 @@ AFTER UPDATE ON venta
 FOR EACH ROW
 EXECUTE FUNCTION fn_anular_venta_reporte();
 
-
 UPDATE producto p
 SET cantstock = p.cantstock + (
     SELECT COALESCE(SUM(dv.cantidad), 0)
@@ -283,7 +268,7 @@ SET cantstock = p.cantstock + (
       AND dv.cantidad > 0 -- Solo sumamos las ventas, no las anulaciones
 );
 
--- 2. Poner todas las ventas en estado "Pagado".
+-- Poner todas las ventas en estado "Pagado".
 UPDATE venta
 SET estadopedido = 'Pagado',
     totalventa = (
@@ -294,10 +279,9 @@ SET estadopedido = 'Pagado',
     )
 WHERE estadopedido != 'Pagado'; -- Aplicar solo a las canceladas/entregadas
 
--- 3. Eliminar cualquier fila de anulación si usaste el Trigger (cantidad negativa).
+-- Eliminar cualquier fila de anulación si se usó el Trigger (cantidad negativa).
 DELETE FROM detalleventa
 WHERE cantidad < 0;
-
 
 -- Query para obtener el movimiento neto de productos
 SELECT
@@ -311,7 +295,6 @@ JOIN producto p ON dv.idprod = p.idprod
 GROUP BY p.idprod, p.titulo
 ORDER BY unidades_vendidas DESC;
 
-
 CREATE TABLE log_auditoria_stock (
     id_log SERIAL PRIMARY KEY,
     id_prod INT NOT NULL,
@@ -322,7 +305,6 @@ CREATE TABLE log_auditoria_stock (
     -- usuario_afectado INT 
     FOREIGN KEY (id_prod) REFERENCES producto(idprod)
 );
-
 
 CREATE OR REPLACE FUNCTION fn_auditar_stock()
 RETURNS TRIGGER AS $$
@@ -345,7 +327,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-
 CREATE OR REPLACE TRIGGER tr_auditoria_stock
 AFTER UPDATE ON producto
 FOR EACH ROW
@@ -354,8 +335,6 @@ EXECUTE FUNCTION fn_auditar_stock();
 -- Creacion de Indice en tabla producto y columna cantstock
 CREATE OR REPLACE INDEX idx_cantstock ON producto(cantstock);
 
-
- 
 -- Función: verificar_correo_existente
 -- Retorna TRUE si el correo ya está en uso por otro ID, FALSE si está disponible.
 CREATE OR REPLACE FUNCTION verificar_correo_existente(
@@ -381,7 +360,6 @@ $$ LANGUAGE plpgsql;
 -- Función: verificar_stock_disponible
 -- Verifica si hay suficiente stock para un producto dado.
 -- Si no hay suficiente stock, lanza una excepción que puede ser capturada por el backend.
-
 CREATE OR REPLACE FUNCTION verificar_stock_disponible(
     p_id_prod INT,
     p_cantidad_requerida INT
@@ -415,8 +393,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 
--- --- ENVÍOS POR PAQUETERÍA (HU7.1 / HU7.2) ---
--- Se puede correr sobre una base existente: solo agrega lo que falte.
+--- ENVÍOS POR PAQUETERÍA ---
 
 -- Dirección de envío congelada en la venta: no cambia aunque el cliente edite su perfil después.
 ALTER TABLE venta
@@ -473,7 +450,7 @@ FROM (VALUES
 ) AS p(nombre, direccion)
 WHERE NOT EXISTS (SELECT 1 FROM puntoentrega pe WHERE pe.nombrepunto = p.nombre);
 
--- Copia del punto medio dentro de la venta (HU7.1): si después se edita o desactiva el punto,
+-- Copia del punto medio dentro de la venta: si después se edita o desactiva el punto,
 -- el historial conserva lo que el cliente eligió. Correo de contacto para coordinar la entrega.
 ALTER TABLE venta
     ADD COLUMN IF NOT EXISTS envio_correo VARCHAR(150),
@@ -521,5 +498,3 @@ GROUP BY
     V."idusuario",
     PE."idpunto"
 ORDER BY V."fecha" DESC;
-
-

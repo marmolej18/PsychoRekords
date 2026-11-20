@@ -1,6 +1,6 @@
-// src/app/features/productos/carrito/carrito.component.ts
 import { Component, OnInit } from '@angular/core';
 import { Observable } from 'rxjs';
+import Swal from 'sweetalert2';
 import { CarritoService } from '../services/carrito.service';
 import { Producto } from '../services/productos.service';
 import { CommonModule } from '@angular/common';
@@ -19,7 +19,7 @@ interface CarritoItem {
   styleUrls: ['./carrito.component.css']
 })
 export class CarritoComponent implements OnInit {
-
+  flag = false;
   carritoItems$ = new Observable<CarritoItem[]>();
   subtotal$ = new Observable<number>();
 
@@ -33,26 +33,91 @@ export class CarritoComponent implements OnInit {
   ngOnInit(): void {
     this.carritoItems$ = this.carritoService.items$;
     this.subtotal$ = this.carritoService.getSubtotal();
+
+    const user: string | null = localStorage.getItem('currentUser');
+    if (user) {
+      this.flag = true;
+    } else {
+      this.flag = false;
+    }
   }
 
   // suma o resta unidades y elimina el producto si baja a 0
   cambiarCantidad(item: CarritoItem, delta: number): void {
     const nueva = item.cantidad + delta;
-    if (nueva <= item.producto.cantstock) {
-      this.carritoService.actualizarCantidad(item.producto.idprod, nueva);
+    if (nueva <= 0) {
+      this.carritoService.actualizarCantidad(item.producto.idprod, 0);
+      Swal.fire({
+        icon: 'info',
+        title: 'Producto eliminado',
+        text: `"${item.producto.titulo}" se quitó del carrito.`,
+        toast: true,
+        position: 'top-end',
+        timer: 1800,
+        showConfirmButton: false
+      });
+      return;
     }
+
+    if (nueva > item.producto.cantstock) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Límite de stock',
+        text: `Solo hay ${item.producto.cantstock} unidades disponibles.`,
+        timer: 2000,
+        showConfirmButton: false
+      });
+      return;
+    }
+
+    this.carritoService.actualizarCantidad(item.producto.idprod, nueva);
   }
 
   eliminarItem(idProd: number): void {
-    if (confirm('¿Estás seguro de que deseas eliminar este producto del carrito?')) {
-      this.carritoService.eliminarProducto(idProd);
-    }
+    Swal.fire({
+      icon: 'warning',
+      title: '¿Eliminar producto?',
+      text: '¿Estás seguro de que deseas eliminar este producto del carrito?',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    }).then(result => {
+      if (result.isConfirmed) {
+        this.carritoService.eliminarProducto(idProd);
+        Swal.fire({
+          icon: 'success',
+          title: 'Eliminado',
+          text: 'El producto fue eliminado del carrito.',
+          timer: 1500,
+          showConfirmButton: false
+        });
+      }
+    });
   }
 
   vaciarCarrito(): void {
-    if (confirm('¿Estás seguro de que deseas vaciar todo el carrito?')) {
-      this.carritoService.vaciarCarrito();
-    }
+    Swal.fire({
+      icon: 'warning',
+      title: '¿Vaciar carrito?',
+      text: 'Se eliminarán todos los productos de tu carrito.',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Sí, vaciar',
+      cancelButtonText: 'Cancelar'
+    }).then(result => {
+      if (result.isConfirmed) {
+        this.carritoService.vaciarCarrito();
+        Swal.fire({
+          icon: 'success',
+          title: 'Carrito vacío',
+          timer: 1500,
+          showConfirmButton: false
+        });
+      }
+    });
   }
 
   calcularIVA(subtotal: number): number {

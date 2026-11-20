@@ -14,6 +14,11 @@ router.post('/login', loginLimit, usuariosController.loginUsuario);
 // Ruta protegida para usuarios autenticados (invalida el JWT actual)
 router.post('/logout', verificarToken, usuariosController.logoutUsuario);
 
+// Perfil propio (el ID se toma del token). Debe ir antes de '/:id'.
+router.get('/perfil', verificarToken, usuariosController.getMiPerfil);
+router.patch('/perfil', verificarToken, validarUsuario, usuariosController.actualizarMiPerfil);
+router.patch('/perfil/password', verificarToken, usuariosController.cambiarMiPassword);
+
 // Consulta de perfil por ID
 router.get('/:id', verificarToken, usuariosController.getUsuarioById);
 

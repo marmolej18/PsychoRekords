@@ -1,14 +1,22 @@
-<body>
-    <main>
-        <section class="Imagen-Bienvenida">
-            <div class="Contenido-Bienvenida">
-                <h1 class="title">PSYCHO REKORD'S</h1>
+<main>
+    <section class="Imagen-Bienvenida">
+        <div class="Contenido-Bienvenida">
+            <h1>PSYCHO REKORD'S</h1>
+            @let user = user$ | async;
+            @if (user?.rol !== 'admin') {
                 <p>Una experiencia musical única en formato físico para disfrutar al máximo tus géneros favoritos.</p>
-            </div>
-            <div class="opcInicio">
-                <button>Comprar</button>
-                <button>Ver catalogo</button>
-            </div>
-        </section>
-    </main>
-</body>
+            } @else {
+                <p>Bienvenido al panel de Administración</p>
+            }
+        </div>
+        <div class="opcInicio">
+            @if (user?.rol !== 'admin') {
+                <button routerLink="/carrito">Comprar</button>
+                <button routerLink="/catalogo">Ver catálogo</button>
+            } @else {
+                <button routerLink="/admin/inventario">Inventario</button>
+                <button routerLink="/catalogo">Ver catálogo</button>
+            }
+        </div>
+    </section>
+</main>

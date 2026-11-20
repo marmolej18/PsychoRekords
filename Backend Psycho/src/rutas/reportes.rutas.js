@@ -5,6 +5,7 @@ const reportesController = require('../controladores/reportes.controlador');
 const { verificarToken, verificarAdmin } = require('../middlewares/auth.middleware'); // Proteger todas las rutas
 
 // Todas las rutas requieren verificación de administrador
+router.get('/metricas', verificarToken, verificarAdmin, reportesController.getMetricas);
 router.get('/rentables', verificarToken, verificarAdmin, reportesController.getReporteRentables);
 router.get('/ventas-formato', verificarToken, verificarAdmin, reportesController.getReporteVentasFormato);
 // Nueva ruta para el Trigger de anulación

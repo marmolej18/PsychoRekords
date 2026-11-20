@@ -498,3 +498,17 @@ GROUP BY
     V."idusuario",
     PE."idpunto"
 ORDER BY V."fecha" DESC;
+
+
+-- --- PAGOS CON STRIPE (HU4.2 / HU4.3 / HU4.4) ---
+-- Se puede correr sobre una base existente: solo agrega lo que falte.
+-- Una venta con tarjeta u OXXO se crea como 'Pendiente de pago' y pasa a 'Pagado'
+-- solo cuando Stripe confirma el cobro.
+ALTER TABLE venta
+    ADD COLUMN IF NOT EXISTS metodo_pago VARCHAR(20) NOT NULL DEFAULT 'paypal',
+    ADD COLUMN IF NOT EXISTS stripe_payment_intent VARCHAR(255) UNIQUE,
+    ADD COLUMN IF NOT EXISTS pagado_en TIMESTAMP,
+    -- Ficha de OXXO (HU4.3): enlace a la ficha con código de barras, número de referencia y vencimiento.
+    ADD COLUMN IF NOT EXISTS oxxo_ficha_url TEXT,
+    ADD COLUMN IF NOT EXISTS oxxo_referencia VARCHAR(40),
+    ADD COLUMN IF NOT EXISTS oxxo_vence TIMESTAMP;

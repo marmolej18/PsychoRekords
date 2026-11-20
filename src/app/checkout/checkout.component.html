@@ -2,7 +2,18 @@
     <h1 class="mb-4 text-center">Finalizar Compra</h1>
     <hr>
 
-    @if (purchaseComplete) {
+    @if (purchaseComplete && ventaExitosaData.fichaUrl) {
+    <div class="alert alert-warning text-center p-5 animate__animated animate__fadeIn">
+        <h3 class="alert-heading">Tu ficha de pago en OXXO está lista</h3>
+        <p class="fs-5">Pedido <strong>#{{ ventaExitosaData.idVenta }}</strong> · Total a pagar:
+            <strong>${{ ventaExitosaData.totalVenta | number: '1.2-2' }}</strong></p>
+        @if (ventaExitosaData.referencia) { <p class="mb-1">Referencia: <strong>{{ ventaExitosaData.referencia }}</strong></p> }
+        @if (ventaExitosaData.vence) { <p>Paga antes del <strong>{{ ventaExitosaData.vence | date: 'dd/MM/yyyy HH:mm' }}</strong>.</p> }
+        <p>Muestra el código de barras en cualquier OXXO. Tu pedido se confirmará en cuanto se registre el pago.</p>
+        <a [href]="ventaExitosaData.fichaUrl" target="_blank" rel="noopener" class="btn btn-dark mt-2">Ver ficha con código de barras</a>
+        <a [routerLink]="['/mis-pedidos']" class="btn btn-primary mt-2 ms-2">Ver Mis Pedidos</a>
+    </div>
+    } @else if (purchaseComplete) {
     <div class="alert alert-success text-center p-5 animate__animated animate__fadeIn">
         <h3 class="alert-heading">¡Tu pedido ha sido confirmado!</h3>
         <p class="fs-5">Tu número de orden es: <strong>#{{ ventaExitosaData.idVenta }}</strong></p>
@@ -170,19 +181,72 @@
                         <h5>2. Detalles de Pago</h5>
                     </div>
                     <div class="card-body">
-                        @if (!pagoPaypalRealizado) {
-                        <p class="text-info">Paga con PayPal para continuar con tu compra.</p>
-                        <div id="paypal-button-container"></div>
-                        } @else {
-                        <div class="alert alert-success mb-0">
-                            Pago con PayPal aprobado. Gracias por tu compra.
-
+                        <div class="list-group mb-3" role="radiogroup" aria-label="Método de pago">
+                            <label class="list-group-item d-flex gap-3 align-items-center"
+                                [class.border-primary]="metodoPago === 'tarjeta'" [class.text-muted]="!stripeDisponible">
+                                <input class="form-check-input" type="radio" formControlName="metodoPago" value="tarjeta"
+                                    [attr.disabled]="stripeDisponible ? null : true">
+                                <span class="flex-grow-1"><strong>Tarjeta de crédito o débito</strong>
+                                    @if (!stripeDisponible) { <span class="d-block small">No disponible por ahora.</span> }
+                                </span>
+                            </label>
+                            <label class="list-group-item d-flex gap-3 align-items-center"
+                                [class.border-primary]="metodoPago === 'oxxo'" [class.text-muted]="!stripeDisponible">
+                                <input class="form-check-input" type="radio" formControlName="metodoPago" value="oxxo"
+                                    [attr.disabled]="stripeDisponible ? null : true">
+                                <span class="flex-grow-1"><strong>Efectivo en OXXO</strong>
+                                    <span class="d-block small text-muted">Te damos una ficha para pagar en tienda (de $10 a $10,000).</span>
+                                </span>
+                            </label>
+                            <label class="list-group-item d-flex gap-3 align-items-center"
+                                [class.border-primary]="metodoPago === 'paypal'">
+                                <input class="form-check-input" type="radio" formControlName="metodoPago" value="paypal">
+                                <span class="flex-grow-1"><strong>PayPal</strong></span>
+                            </label>
                         </div>
+
+                        @if (metodoPago === 'oxxo') {
+                        <p class="small text-muted mb-0">Al generar la ficha, tu pedido queda <strong>pendiente de pago</strong>.
+                            Tienes 3 días para pagar en OXXO; después la ficha vence y el pedido se cancela.</p>
                         }
+
+                        <!-- [hidden] y no @if: Stripe y PayPal se montan una sola vez y deben seguir en la página. -->
+                        <div [hidden]="metodoPago !== 'tarjeta'">
+                            <label class="form-label" for="tarjeta">Datos de la tarjeta</label>
+                            <div id="tarjeta" #tarjetaContainer class="form-control py-2"></div>
+                            @if (errorTarjeta) { <div class="text-danger small mt-1">{{ errorTarjeta }}</div> }
+                            <p class="small text-muted mt-2 mb-0">El pago lo procesa Stripe de forma segura; Psycho Rekords no guarda los datos de tu tarjeta.</p>
+                        </div>
+
+                        <div [hidden]="metodoPago !== 'paypal'">
+                            @if (!pagoPaypalRealizado) {
+                            <p class="text-info">Paga con PayPal para continuar con tu compra.</p>
+                            } @else {
+                            <div class="alert alert-success mb-0">Pago con PayPal aprobado. Gracias por tu compra.</div>
+                            }
+                            <div id="paypal-button-container" [hidden]="pagoPaypalRealizado"></div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="d-grid gap-2 mt-4">
+                    @if (metodoPago === 'tarjeta') {
+                    <button type="button" class="btn btn-success btn-lg" (click)="pagarConTarjeta()"
+                        [disabled]="checkoutForm.invalid || !checkoutForm.getRawValue().entrega || loading || !tarjetaCompleta">
+                        @if (loading) {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        }
+                        {{ loading ? 'Procesando pago...' : 'Pagar con tarjeta' }}
+                    </button>
+                    } @else if (metodoPago === 'oxxo') {
+                    <button type="button" class="btn btn-success btn-lg" (click)="generarFichaOxxo()"
+                        [disabled]="checkoutForm.invalid || !checkoutForm.getRawValue().entrega || loading">
+                        @if (loading) {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        }
+                        {{ loading ? 'Generando ficha...' : 'Generar ficha de OXXO' }}
+                    </button>
+                    } @else {
                     <button type="submit" class="btn btn-success btn-lg"
                         [disabled]="checkoutForm.invalid || !checkoutForm.getRawValue().entrega || loading || !pagoPaypalRealizado">
                         @if (loading) {
@@ -190,6 +254,7 @@
                         }
                         {{ loading ? 'Procesando Compra...' : 'Confirmar Compra' }}
                     </button>
+                    }
                 </div>
 
             </form>

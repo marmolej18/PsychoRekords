@@ -172,7 +172,7 @@ export class VentasAdminComponent implements OnInit {
       case 'EN PREPARACION': case 'EN TRANSITO': return 'badge bg-info text-dark';
       case 'PAGADO': case 'ENTREGADO': case 'COMPLETADO': return 'badge bg-success';
       case 'CANCELADO': return 'badge bg-danger';
-      case 'PENDIENTE': return 'badge bg-warning text-dark';
+      case 'PENDIENTE': case 'PENDIENTE DE PAGO': return 'badge bg-warning text-dark';
       default: return 'badge bg-secondary';
     }
   }

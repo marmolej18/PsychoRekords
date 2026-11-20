@@ -25,6 +25,9 @@ export class MisPedidosComponent implements OnInit {
   abierto: number | null = null;
   cargando = false;
   error = '';
+  // Revisión manual del pago con Stripe (OXXO): pedido que se está revisando y mensaje por pedido.
+  revisando: number | null = null;
+  mensajePago: Record<number, string> = {};
 
   constructor(
     private authService: AuthService,
@@ -62,6 +65,27 @@ export class MisPedidosComponent implements OnInit {
   }
 
   esCancelado(pedido: Venta): boolean { return normalizar(pedido.estadopedido) === 'CANCELADO'; }
+  esPendiente(pedido: Venta): boolean { return normalizar(pedido.estadopedido) === 'PENDIENTE DE PAGO'; }
+
+  /** Pregunta al backend (que a su vez le pregunta a Stripe) si ya se registró el pago en OXXO. */
+  revisarPago(pedido: Venta): void {
+    this.revisando = pedido.idventa;
+    this.mensajePago[pedido.idventa] = '';
+    this.ventasService.confirmarPago(pedido.idventa).subscribe({
+      next: r => {
+        this.revisando = null;
+        if (normalizar(r.estadopedido) === 'PAGADO') {
+          this.cargarPedidos();
+        } else {
+          this.mensajePago[pedido.idventa] = 'Todavía no se registra tu pago. Puede tardar unos minutos después de pagar en tienda.';
+        }
+      },
+      error: err => {
+        this.revisando = null;
+        this.mensajePago[pedido.idventa] = err.error?.message || 'No pudimos revisar tu pago. Intenta más tarde.';
+      }
+    });
+  }
   esEntregado(pedido: Venta): boolean { return normalizar(pedido.estadopedido) === 'ENTREGADO'; }
   // Ya salió a paquetería: el negocio no puede cancelarlo ni regresar el stock.
   yaSalio(pedido: Venta): boolean { return ['EN TRANSITO', 'ENTREGADO'].includes(normalizar(pedido.estadopedido)); }
@@ -79,6 +103,7 @@ export class MisPedidosComponent implements OnInit {
 
   estadoClase(pedido: Venta): string {
     if (this.esCancelado(pedido)) return 'badge bg-danger';
+    if (this.esPendiente(pedido)) return 'badge bg-warning text-dark';
     if (this.esEntregado(pedido)) return 'badge bg-success';
     return this.etapaActual(pedido) >= 0 ? 'badge bg-info text-dark' : 'badge bg-secondary';
   }

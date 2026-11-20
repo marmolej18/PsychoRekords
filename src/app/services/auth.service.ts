@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, distinctUntilChanged, finalize, map, tap } from 'rxjs';
+import { CarritoService } from './carrito.service';
 
 // Interface para el objeto de usuario (coincide con la respuesta de tu API)
 export interface UserAuth {
@@ -50,7 +51,8 @@ export class AuthService {
 
     constructor(
         private http: HttpClient,
-        private router: Router
+        private router: Router,
+        private carritoService: CarritoService
     ) {
         // Cargar el estado al iniciar el servicio (ej: al refrescar la página)
         this.loadUserFromStorage();
@@ -87,29 +89,63 @@ export class AuthService {
         return payload.exp * 1000 <= Date.now();
     }
 
-    /** Carga la sesión desde el almacenamiento local si existe junto con su JWT vigente. */
+    /**
+     * Carga la sesión desde el almacenamiento local si existe junto con su JWT vigente.
+     * El id y el rol salen del token, no de 'currentUser': si alguien edita 'currentUser'
+     * en el navegador (por ejemplo, para ponerse rol admin), la sesión se cierra.
+     */
     private loadUserFromStorage(): void {
         const userJson = localStorage.getItem('currentUser');
         const token = localStorage.getItem('auth_token');
-        if (userJson && token) {
-            if (this.isTokenExpired(token)) {
+        if (!userJson && !token) {
+            return;
+        }
+        const payload = token ? this.decodeTokenPayload(token) : null;
+        if (!token || !payload?.idUsuario || !payload.rol || this.isTokenExpired(token)) {
+            this.clearSession();
+            return;
+        }
+        try {
+            const user: UserAuth = JSON.parse(userJson ?? '');
+            if (Number(user.idUsuario) !== Number(payload.idUsuario) || user.rol !== payload.rol) {
                 this.clearSession();
                 return;
             }
-            try {
-                const user: UserAuth = JSON.parse(userJson);
-                this.setUserState(user);
-            } catch {
-                this.clearSession();
-            }
-        } else if (userJson && !token) {
+            this.setUserState(user);
+        } catch {
             this.clearSession();
         }
     }
 
-    /** Actualiza todos los sujetos de estado. */
+    /**
+     * Confirma con el backend que la sesión guardada sigue siendo válida y toma de ahí el rol.
+     * El backend valida la firma del token, cosa que el navegador no puede hacer; si el token
+     * fue alterado o revocado, el interceptor limpia la sesión al recibir 401/403.
+     */
+    verificarSesion(): void {
+        const actual = this.userSubject.getValue();
+        if (!actual) {
+            return;
+        }
+        this.getMiPerfil().subscribe({
+            next: perfil => {
+                const user: UserAuth = {
+                    idUsuario: perfil.idUsuario,
+                    nombre: perfil.nombre,
+                    correoElectronico: perfil.correoElectronico,
+                    rol: perfil.rol
+                };
+                localStorage.setItem('currentUser', JSON.stringify(user));
+                this.setUserState(user);
+            },
+            error: () => { /* 401/403 ya los maneja el interceptor; otros errores no cierran la sesión. */ }
+        });
+    }
+
+    /** Actualiza todos los sujetos de estado y cambia al carrito de ese usuario. */
     private setUserState(user: UserAuth | null): void {
         this.userSubject.next(user);
+        this.carritoService.cambiarUsuario(user ? Number(user.idUsuario) : null);
     }
 
     /**
@@ -134,8 +170,8 @@ export class AuthService {
     }
 
     /**
-     * Limpia únicamente los datos de sesión ('auth_token' y 'currentUser'),
-     * manteniendo intacto el carrito de compras en localStorage.
+     * Limpia únicamente los datos de sesión ('auth_token' y 'currentUser').
+     * El carrito del usuario queda guardado para su próxima sesión y se muestra el de invitado.
      */
     clearSession(): void {
         localStorage.removeItem('auth_token');

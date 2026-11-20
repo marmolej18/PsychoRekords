@@ -55,6 +55,7 @@ export interface VentaDTO {
   idtarifa?: number;
   productos: DetalleVentaDTO[];
   envio: DireccionEnvio | ContactoPunto;
+  metodoPago?: 'paypal' | 'tarjeta' | 'oxxo';
 }
 
 // Interface para el producto dentro de una venta
@@ -95,6 +96,21 @@ export interface Venta {
   costo_envio?: number;
   // Rastreo, se llena cuando el pedido pasa a "En tránsito"
   numero_guia?: string | null;
+  // Pago: con OXXO el pedido queda 'Pendiente de pago' y se guarda la ficha para pagar en tienda
+  metodo_pago?: 'paypal' | 'tarjeta' | 'oxxo';
+  oxxo_ficha_url?: string | null;
+  oxxo_referencia?: string | null;
+  oxxo_vence?: string | null;
+}
+
+/** Respuesta de confirmar un pago con Stripe; las fichas de OXXO traen fichaUrl, referencia y vence. */
+export interface ConfirmacionPago {
+  message: string;
+  idVenta: number;
+  estadopedido: string;
+  fichaUrl?: string;
+  referencia?: string | null;
+  vence?: string | null;
 }
 
 // Etapas por las que pasa un pedido enviado por paquetería, en orden (debe coincidir con el backend).
@@ -118,10 +134,11 @@ export function urlRastreo(venta: Venta): string | null {
 export const normalizarEstado = (estado: string | null | undefined): string =>
   (estado ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toUpperCase();
 
-export type FiltroPedidos = 'todos' | 'pagados' | 'preparacion' | 'transito' | 'entregados' | 'cancelados';
+export type FiltroPedidos = 'todos' | 'pendientes' | 'pagados' | 'preparacion' | 'transito' | 'entregados' | 'cancelados';
 
 export const FILTROS_PEDIDO: { clave: FiltroPedidos; texto: string }[] = [
   { clave: 'todos', texto: 'Todos' },
+  { clave: 'pendientes', texto: 'Pendientes de pago' },
   { clave: 'pagados', texto: 'Pagados' },
   { clave: 'preparacion', texto: 'En preparación' },
   { clave: 'transito', texto: 'En tránsito' },
@@ -130,6 +147,7 @@ export const FILTROS_PEDIDO: { clave: FiltroPedidos; texto: string }[] = [
 ];
 
 const ESTADO_POR_FILTRO: Record<Exclude<FiltroPedidos, 'todos'>, string> = {
+  pendientes: 'PENDIENTE DE PAGO',
   pagados: 'PAGADO',
   preparacion: 'EN PREPARACION',
   transito: 'EN TRANSITO',
@@ -182,6 +200,15 @@ export class VentasService {
       'Content-Type': 'application/json',
     });
     return this.http.post<any>(this.apiUrl, ventaData, { headers });
+  }
+
+  /**
+   * POST /api/pagos/confirmar/:idventa
+   * Pide al backend que verifique el pago con Stripe: si se cobró, lo marca como pagado;
+   * si es OXXO y aún no se paga, guarda y devuelve la ficha.
+   */
+  confirmarPago(idventa: number): Observable<ConfirmacionPago> {
+    return this.http.post<ConfirmacionPago>(`http://localhost:3000/api/pagos/confirmar/${idventa}`, {});
   }
 
   /**

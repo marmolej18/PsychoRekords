@@ -11,6 +11,8 @@
   <!-- PayPal SANDBOX (pagos de prueba, sin dinero real). Desde el 02/11/2026 el client-id es de la
        cuenta de desarrollador de Enrique Amador (KikeBranch). Para probar pagos, pídele las cuentas
        de prueba (Sandbox Accounts) o cambia este client-id por el de tu propia app sandbox. -->
+  <!-- Stripe exige cargar Stripe.js desde su dominio; los datos de la tarjeta nunca pasan por nuestro servidor. -->
+  <script src="https://js.stripe.com/v3/"></script>
   <script src="https://www.paypal.com/sdk/js?client-id=BAAwUEup6UuHtpVY5SETdZRpxpMdqPUZB7XnsBfH-HOjmIlH4sMKIWE3oRw56jol51rZGndzn4PxBsq-zo&currency=MXN"></script>
 </head>
 <body>

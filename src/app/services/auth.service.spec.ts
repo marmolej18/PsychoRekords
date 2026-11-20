@@ -8,6 +8,15 @@ describe('AuthService', () => {
     let httpSpy: jasmine.SpyObj<HttpClient>;
     let routerSpy: jasmine.SpyObj<Router>;
     const crearServicio = () => TestBed.inject(AuthService);
+    // JWT con el formato real (header.payload.firma); la firma no se valida en el navegador.
+    const crearJwt = (payload: object) =>
+        `e30.${btoa(JSON.stringify(payload)).replace(/=+$/, '')}.firma`;
+    const guardarSesion = (rolUsuario: string, rolToken: string, idToken = 9) => {
+        localStorage.setItem('auth_token', crearJwt({ idUsuario: idToken, rol: rolToken, exp: Date.now() / 1000 + 3600 }));
+        localStorage.setItem('currentUser', JSON.stringify({
+            idUsuario: 9, nombre: 'Luis', correoElectronico: 'luis@test.com', rol: rolUsuario
+        }));
+    };
     const respuestaLogin = (rol?: string, token?: string) => ({
         message: 'ok',
         ...(token ? { token } : {}),
@@ -100,10 +109,7 @@ describe('AuthService', () => {
 
     it('debería restaurar la sesión guardada (usuario + token) al crearse', () => {
         // Arrange: simula recargar la página
-        localStorage.setItem('auth_token', 'jwt-abc');
-        localStorage.setItem('currentUser', JSON.stringify({
-        idUsuario: 9, nombre: 'Luis', correoElectronico: 'luis@test.com', rol: 'admin'
-        }));
+        guardarSesion('admin', 'admin');
         // Act
         const service = crearServicio();
         // Assert
@@ -111,6 +117,48 @@ describe('AuthService', () => {
         service.isAdmin$.subscribe(v => (esAdmin = v));
         expect(esAdmin).toBeTrue();
         expect(service.getAuthHeader()).toBe('9');
+    });
+
+    it('debería cerrar la sesión si editaron el rol en currentUser', () => {
+        // Arrange: el token dice cliente, pero alguien cambió currentUser a admin a mano
+        guardarSesion('admin', 'cliente');
+        // Act
+        const service = crearServicio();
+        // Assert
+        expect(service.getAuthHeader()).toBeNull();
+        expect(localStorage.getItem('auth_token')).toBeNull();
+        expect(localStorage.getItem('currentUser')).toBeNull();
+    });
+
+    it('debería cerrar la sesión si currentUser es de otro usuario que el token', () => {
+        guardarSesion('cliente', 'cliente', 4);
+        expect(crearServicio().getAuthHeader()).toBeNull();
+    });
+
+    it('debería cerrar la sesión si el token no tiene formato JWT', () => {
+        localStorage.setItem('auth_token', 'jwt-abc');
+        localStorage.setItem('currentUser', JSON.stringify({ idUsuario: 9, rol: 'admin' }));
+        expect(crearServicio().getAuthHeader()).toBeNull();
+    });
+
+    it('verificarSesion debería tomar el rol que confirma el servidor', () => {
+        // Arrange: sesión guardada como admin, pero el servidor dice que es cliente
+        guardarSesion('admin', 'admin');
+        const service = crearServicio();
+        httpSpy.get.and.returnValue(of({ idUsuario: 9, nombre: 'Luis', correoElectronico: 'luis@test.com', rol: 'cliente' }));
+        let esAdmin = true;
+        service.isAdmin$.subscribe(v => (esAdmin = v));
+        // Act
+        service.verificarSesion();
+        // Assert
+        expect(httpSpy.get).toHaveBeenCalledWith('http://localhost:3000/api/usuarios/perfil');
+        expect(esAdmin).toBeFalse();
+        expect(localStorage.getItem('currentUser')).toContain('"rol":"cliente"');
+    });
+
+    it('verificarSesion no debería llamar al servidor sin sesión', () => {
+        crearServicio().verificarSesion();
+        expect(httpSpy.get).not.toHaveBeenCalled();
     });
 
     it('NO debería restaurar la sesión si falta el token', () => {

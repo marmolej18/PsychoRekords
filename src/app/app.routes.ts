@@ -30,8 +30,8 @@ export const routes: Routes = [
     { path: 'mis-pedidos', component: MisPedidosComponent },
     { path: 'perfil', component: PerfilComponent },
     { path: 'admin/ventas', component: VentasAdminComponent, canActivate: [adminGuard] },
-    { path: 'admin/inventario', component: InventarioComponent },
-    { path: 'admin/reportes', component: ReportesComponent },
-    { path: 'admin/usuarios', component: GestionUsuariosComponent },
+    { path: 'admin/inventario', component: InventarioComponent, canActivate: [adminGuard] },
+    { path: 'admin/reportes', component: ReportesComponent, canActivate: [adminGuard] },
+    { path: 'admin/usuarios', component: GestionUsuariosComponent, canActivate: [adminGuard] },
     { path: '**', pathMatch: 'full', redirectTo: 'inicio' },
 ];

@@ -34,21 +34,61 @@ export class CarritoService {
     return this.itemCountSubject.getValue();
   }
 
+  // Carrito de invitado (sin sesión); cada usuario tiene el suyo en 'tienda_carrito_<idUsuario>'.
   private readonly STORAGE_KEY = 'tienda_carrito';
+  private idUsuario: number | null = null;
+
+  private get storageKey(): string {
+    return this.idUsuario ? `${this.STORAGE_KEY}_${this.idUsuario}` : this.STORAGE_KEY;
+  }
 
   constructor() {
     this.loadInitialData();
   }
 
   /**
-   * Carga el carrito desde localStorage al iniciar la aplicación.
+   * Carga el carrito del usuario actual (o el de invitado) desde localStorage.
    */
   loadInitialData(): void {
-    const itemsJson = localStorage.getItem(this.STORAGE_KEY);
-    if (itemsJson) {
-      const items = JSON.parse(itemsJson);
-      this.itemsSubject.next(items);
-      this.updateItemCount(items);
+    const items = this.leerCarrito(this.storageKey);
+    this.itemsSubject.next(items);
+    this.updateItemCount(items);
+  }
+
+  /**
+   * Cambia al carrito del usuario que inició sesión, o al de invitado si la cerró (null).
+   * Lo que se agregó como invitado se suma al carrito del usuario al iniciar sesión, así
+   * quien cierra sesión no le deja su carrito a la siguiente persona en ese navegador.
+   */
+  cambiarUsuario(idUsuario: number | null): void {
+    if (idUsuario === this.idUsuario) return;
+    this.idUsuario = idUsuario;
+    const items = this.leerCarrito(this.storageKey);
+
+    if (idUsuario) {
+      const invitado = this.leerCarrito(this.STORAGE_KEY);
+      for (const nuevo of invitado) {
+        const existente = items.find(i => i.producto.idprod === nuevo.producto.idprod);
+        if (existente) {
+          existente.producto = nuevo.producto;
+          existente.cantidad = Math.min(existente.cantidad + nuevo.cantidad, nuevo.producto.cantstock);
+        } else {
+          items.push(nuevo);
+        }
+      }
+      if (invitado.length) localStorage.removeItem(this.STORAGE_KEY);
+    }
+
+    this.itemsSubject.next(items);
+    this.saveCart(items);
+  }
+
+  private leerCarrito(clave: string): CarritoItem[] {
+    try {
+      const items = JSON.parse(localStorage.getItem(clave) ?? '[]');
+      return Array.isArray(items) ? items : [];
+    } catch {
+      return [];
     }
   }
 
@@ -56,7 +96,7 @@ export class CarritoService {
    * Guarda el estado actual del carrito en localStorage.
    */
   private saveCart(items: CarritoItem[]): void {
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(items));
+    localStorage.setItem(this.storageKey, JSON.stringify(items));
     this.updateItemCount(items);
   }
 

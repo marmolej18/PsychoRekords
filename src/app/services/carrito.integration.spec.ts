@@ -53,6 +53,66 @@ describe('Integración: CarritoService + localStorage', () => {
         expect(subtotal).toBe(300);
     });
 
+    it('cada usuario debería tener su propio carrito', () => {
+        const carrito = TestBed.inject(CarritoService);
+        carrito.cambiarUsuario(5);
+        carrito.agregarProducto(discoA, 2);
+        carrito.cambiarUsuario(null);   // cierra sesión
+        carrito.cambiarUsuario(8);      // entra otra persona en el mismo navegador
+
+        expect(carrito.getItems()).toEqual([]);
+
+        carrito.cambiarUsuario(null);
+        carrito.cambiarUsuario(5);      // vuelve el primero: recupera su carrito
+        expect(carrito.getItemCount()).toBe(2);
+        expect(localStorage.getItem('tienda_carrito_5')).toContain('Disco A');
+    });
+
+    it('al cerrar sesión el carrito queda guardado pero ya no se muestra', () => {
+        const carrito = TestBed.inject(CarritoService);
+        carrito.cambiarUsuario(5);
+        carrito.agregarProducto(discoA);
+        carrito.cambiarUsuario(null);
+
+        expect(carrito.getItems()).toEqual([]);
+        expect(carrito.getItemCount()).toBe(0);
+    });
+
+    it('lo agregado como invitado debería sumarse al carrito del usuario al iniciar sesión', () => {
+        localStorage.setItem('tienda_carrito_5', JSON.stringify([{ producto: discoA, cantidad: 1 }]));
+        const carrito = TestBed.inject(CarritoService);
+        carrito.agregarProducto(discoA, 2); // como invitado
+        carrito.agregarProducto(discoB);
+
+        carrito.cambiarUsuario(5);
+
+        expect(carrito.getItems().find(i => i.producto.idprod === 1)?.cantidad).toBe(3);
+        expect(carrito.getItemCount()).toBe(4);
+        expect(localStorage.getItem('tienda_carrito')).toBeNull();
+    });
+
+    it('al sumar el carrito de invitado debería respetar el stock', () => {
+        const pocoStock = { idprod: 3, titulo: 'Disco C', precio: 80, cantstock: 2 } as Producto;
+        localStorage.setItem('tienda_carrito_5', JSON.stringify([{ producto: pocoStock, cantidad: 2 }]));
+        const carrito = TestBed.inject(CarritoService);
+        carrito.agregarProducto(pocoStock, 2);
+
+        carrito.cambiarUsuario(5);
+
+        expect(carrito.getItems()[0].cantidad).toBe(2);
+    });
+
+    it('el carrito de cada usuario debería persistir tras recargar', () => {
+        const antes = TestBed.inject(CarritoService);
+        antes.cambiarUsuario(5);
+        antes.agregarProducto(discoB, 3);
+
+        const despues = recargarServicio();
+        despues.cambiarUsuario(5);
+
+        expect(despues.getItemCount()).toBe(3);
+    });
+
     it('el límite de stock debería respetarse y conservarse tras recargar', () => {
         const antes = TestBed.inject(CarritoService);
         const pocoStock = { idprod: 3, titulo: 'Disco C', precio: 80, cantstock: 2 } as Producto;

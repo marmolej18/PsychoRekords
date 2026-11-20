@@ -37,6 +37,23 @@
           <div class="card-body pt-0">
             @if (esCancelado(pedido)) {
               <p class="alert alert-danger small mb-0">Este pedido fue cancelado. Los productos regresaron al inventario.</p>
+            } @else if (esPendiente(pedido)) {
+              <div class="alert alert-warning small mb-0">
+                @if (pedido.oxxo_ficha_url) {
+                  <p class="mb-1"><strong>Pendiente de pago en OXXO.</strong>
+                    @if (pedido.oxxo_vence) { Paga antes del {{ pedido.oxxo_vence | date:'dd/MM/yyyy HH:mm' }}. }
+                  </p>
+                  @if (pedido.oxxo_referencia) { <p class="mb-1">Referencia: <strong>{{ pedido.oxxo_referencia }}</strong></p> }
+                  <a [href]="pedido.oxxo_ficha_url" target="_blank" rel="noopener" class="btn btn-sm btn-dark me-2">Ver ficha</a>
+                } @else {
+                  <p class="mb-1"><strong>Pendiente de pago.</strong> Tu pedido se confirmará cuando se registre el pago.</p>
+                }
+                <button type="button" class="btn btn-sm btn-outline-dark" (click)="revisarPago(pedido)"
+                  [disabled]="revisando === pedido.idventa">
+                  {{ revisando === pedido.idventa ? 'Revisando...' : 'Ya pagué, revisar' }}
+                </button>
+                @if (mensajePago[pedido.idventa]) { <p role="status" class="mt-2 mb-0">{{ mensajePago[pedido.idventa] }}</p> }
+              </div>
             } @else {
               <ol class="seguimiento" [attr.aria-label]="'Seguimiento del pedido ' + pedido.idventa">
                 @for (etapa of etapas; track etapa; let i = $index) {

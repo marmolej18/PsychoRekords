@@ -1,15 +1,19 @@
 // src/app/features/ventas/checkout/checkout.component.ts
-import { Component, OnInit, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, ElementRef, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { CarritoService } from '../services/carrito.service';
 import { AuthService } from '../services/auth.service';
-import { VentasService, ContactoPunto, DetalleVentaDTO, DireccionEnvio, PuntoEntrega, TarifaEnvio, VentaDTO } from '../services/ventas.service';
-import { combineLatest, Observable, Subscription } from 'rxjs';
+import {
+  VentasService, ConfirmacionPago, ContactoPunto, DetalleVentaDTO, DireccionEnvio, PuntoEntrega, TarifaEnvio, VentaDTO
+} from '../services/ventas.service';
+import { combineLatest, firstValueFrom, Observable, Subscription } from 'rxjs';
 import { map, startWith } from 'rxjs/operators';
+import { STRIPE_PUBLISHABLE_KEY } from '../config/stripe.config';
 
 declare let paypal: any;
+declare let Stripe: any;
 
 @Component({
   selector: 'app-checkout',
@@ -42,6 +46,19 @@ export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
   private paypalButtonRenderizado = false;
   private resumenSub?: Subscription;
 
+  // --- Estado de Stripe (pago con tarjeta, HU4.2) ---
+  // Los datos de la tarjeta los captura Stripe en su propio campo; nunca pasan por nuestro código.
+  @ViewChild('tarjetaContainer') tarjetaContainer?: ElementRef<HTMLElement>;
+  private stripe: any = null;
+  private campoTarjeta: any = null;
+  tarjetaCompleta = false;
+  errorTarjeta = '';
+  // Venta creada en el backend esperando el cobro; se reutiliza si el cliente reintenta con otra tarjeta.
+  private ventaPendiente: { idVenta: number; clientSecret: string; totalVenta: number } | null = null;
+  // Nombre y correo del perfil: OXXO los pide para generar la ficha (HU4.3).
+  private nombreCliente = '';
+  private correoCliente = '';
+
   constructor(
     private fb: FormBuilder,
     private router: Router,
@@ -56,6 +73,7 @@ export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
     // Va antes de la validación: si se redirige, el template se alcanza a renderizar y necesita el FormGroup.
     this.checkoutForm = this.fb.group({
       entrega: ['', Validators.required],
+      metodoPago: [this.stripeDisponible ? 'tarjeta' : 'paypal', Validators.required],
       direccion: this.fb.group({
         destinatario: ['', [Validators.required, Validators.maxLength(150)]],
         telefono: ['', [Validators.required, Validators.pattern(/^\d{10}$/)]],
@@ -110,6 +128,8 @@ export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
       next: perfil => {
         const valor = (v: unknown) => (typeof v === 'string' ? v : '');
         const telefono = valor(perfil.telefono).replace(/\D/g, '');
+        this.nombreCliente = [perfil.nombre, perfil.apellidoP, perfil.apellidoM].filter(Boolean).join(' ');
+        this.correoCliente = valor(perfil.correoElectronico);
         contacto.patchValue({ correo: valor(perfil.correoElectronico), telefono });
         direccion.patchValue({
           destinatario: [perfil.nombre, perfil.apellidoP, perfil.apellidoM].filter(Boolean).join(' '),
@@ -155,6 +175,27 @@ export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
         this.renderPaypalButton();
       }
     });
+    this.montarCampoTarjeta();
+  }
+
+  /** Stripe está listo si hay llave pública y se cargó Stripe.js (en pruebas unitarias no se carga). */
+  get stripeDisponible(): boolean {
+    return !!STRIPE_PUBLISHABLE_KEY && typeof Stripe !== 'undefined';
+  }
+
+  get metodoPago(): 'tarjeta' | 'paypal' | 'oxxo' {
+    return this.checkoutForm?.getRawValue().metodoPago;
+  }
+
+  private montarCampoTarjeta(): void {
+    if (!this.stripeDisponible || !this.tarjetaContainer || this.campoTarjeta) return;
+    this.stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+    this.campoTarjeta = this.stripe.elements({ locale: 'es' }).create('card', { hidePostalCode: true });
+    this.campoTarjeta.mount(this.tarjetaContainer.nativeElement);
+    this.campoTarjeta.on('change', (evento: any) => {
+      this.tarjetaCompleta = evento.complete;
+      this.errorTarjeta = evento.error?.message ?? '';
+    });
   }
 
   /** Tarifa elegida, o undefined si el cliente eligió un punto medio (o nada todavía). */
@@ -178,6 +219,7 @@ export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.resumenSub?.unsubscribe();
+    this.campoTarjeta?.destroy();
   }
 
   private renderPaypalButton(): void {
@@ -206,8 +248,9 @@ export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
         const details = await actions.order.capture();
         this.detallesPaypal = details;
         this.pagoPaypalRealizado = true;
-        // Ya se cobró ese envío: no se permite cambiar la forma de entrega.
+        // Ya se cobró ese envío con PayPal: no se permite cambiar la forma de entrega ni el método.
         this.checkoutForm.get('entrega')!.disable({ emitEvent: false });
+        this.checkoutForm.get('metodoPago')!.disable({ emitEvent: false });
       },
       onError: (err: any) => {
         this.errorMessage = 'Hubo un problema al procesar el pago con PayPal. Intenta de nuevo.';
@@ -223,38 +266,142 @@ export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
    */
   async confirmarCompra(): Promise<void> {
     this.errorMessage = null;
-
-    // getRawValue: la entrega se deshabilita (bloquea) al pagar, pero su valor sigue contando.
-    const { entrega, direccion, contacto } = this.checkoutForm.getRawValue();
-    if (!entrega) {
-      this.errorMessage = 'Elige cómo quieres recibir tu pedido.';
-      return;
-    }
-    if (this.checkoutForm.invalid) {
-      this.checkoutForm.markAllAsTouched();
-      this.errorMessage = this.esPuntoMedio
-        ? 'Por favor, completa correo, teléfono y referencias para la entrega.'
-        : 'Por favor, completa correctamente la dirección de envío.';
-      return;
-    }
+    const ventaData = this.armarVenta('paypal');
+    if (!ventaData) return;
 
     if (!this.pagoPaypalRealizado) {
       this.errorMessage = 'Debes completar el pago con PayPal antes de confirmar la compra.';
       return;
     }
 
-    const currentItems = this.carritoService.getItems();
-    const idUsuario = Number(this.authService.getAuthHeader()); // idUsuario como número
-    const [tipo, idEntrega] = String(entrega).split('-');
+    this.loading = true;
 
-    if (!currentItems || currentItems.length === 0) {
-      this.errorMessage = 'El carrito está vacío. No se puede procesar la compra.';
+    // Llamada al servicio para crear la venta (transacción)
+    this.ventasService.crearVenta(ventaData).subscribe({
+      next: (response) => this.terminarCompra(response),
+      error: (err) => {
+        this.loading = false;
+        // La API de Node.js devolverá mensajes específicos (ej: stock insuficiente)
+        this.errorMessage = err.error?.message || 'Error en la transacción. Verifica el stock y reintenta.';
+        console.error('Error al confirmar la compra:', err);
+      }
+    });
+  }
+
+  /**
+   * Pago con tarjeta (HU4.2): el backend crea la venta como 'Pendiente de pago' y el cobro en Stripe
+   * por el total que él calcula; Stripe cobra la tarjeta aquí mismo y al final el backend le pregunta
+   * a Stripe si el cobro fue real antes de marcar la venta como pagada.
+   */
+  async pagarConTarjeta(): Promise<void> {
+    this.errorMessage = null;
+    if (!this.stripe || !this.campoTarjeta) {
+      this.errorMessage = 'El pago con tarjeta no está disponible en este momento.';
+      return;
+    }
+    if (!this.tarjetaCompleta) {
+      this.errorMessage = this.errorTarjeta || 'Completa los datos de la tarjeta.';
       return;
     }
 
     this.loading = true;
+    try {
+      if (!this.ventaPendiente) {
+        const ventaData = this.armarVenta('tarjeta');
+        if (!ventaData) { this.loading = false; return; }
+        const venta = await firstValueFrom(this.ventasService.crearVenta(ventaData));
+        this.ventaPendiente = { idVenta: venta.idVenta, clientSecret: venta.clientSecret, totalVenta: venta.totalVenta };
+        // La venta ya existe con esta entrega y este método: no se pueden cambiar en un reintento.
+        this.checkoutForm.get('entrega')!.disable({ emitEvent: false });
+        this.checkoutForm.get('metodoPago')!.disable({ emitEvent: false });
+      }
 
-    // 1. Mapear los ítems del carrito al formato DetalleVentaDTO que espera la API
+      const { error } = await this.stripe.confirmCardPayment(this.ventaPendiente.clientSecret, {
+        payment_method: { card: this.campoTarjeta }
+      });
+      if (error) {
+        // Tarjeta rechazada, fondos insuficientes, etc.: la venta sigue pendiente y puede reintentar.
+        this.errorMessage = error.message || 'No se pudo cobrar la tarjeta.';
+        this.loading = false;
+        return;
+      }
+
+      await firstValueFrom(this.ventasService.confirmarPago(this.ventaPendiente.idVenta));
+      this.terminarCompra(this.ventaPendiente);
+    } catch (err: any) {
+      this.loading = false;
+      this.errorMessage = err?.error?.message || 'No se pudo completar el pago con tarjeta.';
+      console.error('Error en el pago con tarjeta:', err);
+    }
+  }
+
+  /**
+   * Pago en efectivo en OXXO (HU4.3): el backend crea la venta 'Pendiente de pago' y el cobro OXXO;
+   * Stripe genera la ficha con código de barras y la muestra. El pedido se confirma hasta que se paga
+   * en tienda; el stock se descuenta en ese momento, no antes.
+   */
+  async generarFichaOxxo(): Promise<void> {
+    this.errorMessage = null;
+    if (!this.stripe) {
+      this.errorMessage = 'El pago en OXXO no está disponible en este momento.';
+      return;
+    }
+    const ventaData = this.armarVenta('oxxo');
+    if (!ventaData) return;
+    const { contacto, direccion } = this.checkoutForm.getRawValue();
+    const nombre = this.nombreCliente || direccion?.destinatario;
+    const correo = this.correoCliente || contacto?.correo;
+    if (!nombre || !correo) {
+      this.errorMessage = 'Para generar la ficha de OXXO necesitamos tu nombre y correo; complétalos en tu perfil.';
+      return;
+    }
+
+    this.loading = true;
+    try {
+      const venta = await firstValueFrom(this.ventasService.crearVenta(ventaData));
+      const { error } = await this.stripe.confirmOxxoPayment(venta.clientSecret, {
+        payment_method: { billing_details: { name: nombre, email: correo } }
+      });
+      if (error) {
+        this.loading = false;
+        this.errorMessage = error.message || 'No se pudo generar la ficha de OXXO.';
+        return;
+      }
+      const ficha = await firstValueFrom(this.ventasService.confirmarPago(venta.idVenta));
+      this.terminarCompra({ ...ficha, totalVenta: venta.totalVenta });
+    } catch (err: any) {
+      this.loading = false;
+      this.errorMessage = err?.error?.message || 'No se pudo generar la ficha de OXXO.';
+      console.error('Error al generar la ficha de OXXO:', err);
+    }
+  }
+
+  /** Valida el formulario y arma el pedido para el backend; devuelve null y muestra el error si falta algo. */
+  private armarVenta(metodoPago: 'paypal' | 'tarjeta' | 'oxxo'): VentaDTO | null {
+    // getRawValue: la entrega se deshabilita (bloquea) al pagar, pero su valor sigue contando.
+    const { entrega, direccion, contacto } = this.checkoutForm.getRawValue();
+    if (!entrega) {
+      this.errorMessage = 'Elige cómo quieres recibir tu pedido.';
+      return null;
+    }
+    if (this.checkoutForm.invalid) {
+      this.checkoutForm.markAllAsTouched();
+      this.errorMessage = this.esPuntoMedio
+        ? 'Por favor, completa correo, teléfono y referencias para la entrega.'
+        : 'Por favor, completa correctamente la dirección de envío.';
+      return null;
+    }
+
+    const currentItems = this.carritoService.getItems();
+    if (!currentItems || currentItems.length === 0) {
+      this.errorMessage = 'El carrito está vacío. No se puede procesar la compra.';
+      return null;
+    }
+
+    const idUsuario = Number(this.authService.getAuthHeader()); // idUsuario como número
+    const [tipo, idEntrega] = String(entrega).split('-');
+
+    // Mapear los ítems del carrito al formato DetalleVentaDTO que espera la API
     const productos: DetalleVentaDTO[] = currentItems.map(item => ({
       idprod: item.producto.idprod,
       cantidad: item.cantidad,
@@ -263,25 +410,17 @@ export class CheckoutComponent implements OnInit, AfterViewInit, OnDestroy {
     }));
 
     // Punto medio: el punto y el contacto. A domicilio: la tarifa y la dirección.
-    const ventaData: VentaDTO = tipo === 'punto'
-      ? { idusuario: idUsuario, productos, idpunto: Number(idEntrega), envio: contacto as ContactoPunto }
-      : { idusuario: idUsuario, productos, idtarifa: Number(idEntrega), envio: direccion as DireccionEnvio };
+    return tipo === 'punto'
+      ? { idusuario: idUsuario, productos, idpunto: Number(idEntrega), envio: contacto as ContactoPunto, metodoPago }
+      : { idusuario: idUsuario, productos, idtarifa: Number(idEntrega), envio: direccion as DireccionEnvio, metodoPago };
+  }
 
-    // 2. Llamada al servicio para crear la venta (transacción)
-    this.ventasService.crearVenta(ventaData).subscribe({
-      next: (response) => {
-        this.loading = false;
-        this.ventaExitosaData = response;
-        this.purchaseComplete = true;
-        this.carritoService.vaciarCarrito(); // Limpiar el carrito después de la compra
-      },
-      error: (err) => {
-        this.loading = false;
-        // La API de Node.js devolverá mensajes específicos (ej: stock insuficiente)
-        this.errorMessage = err.error?.message || 'Error en la transacción. Verifica el stock y reintenta.';
-        console.error('Error al confirmar la compra:', err);
-      }
-    });
+  // Con OXXO la venta trae la ficha (fichaUrl, referencia, vence) y el pedido sigue pendiente de pago.
+  private terminarCompra(venta: { idVenta: number; totalVenta: number } & Partial<ConfirmacionPago>): void {
+    this.loading = false;
+    this.ventaExitosaData = venta;
+    this.purchaseComplete = true;
+    this.carritoService.vaciarCarrito(); // Limpiar el carrito después de la compra
   }
 
   

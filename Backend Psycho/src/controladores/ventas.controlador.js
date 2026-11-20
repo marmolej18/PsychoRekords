@@ -1,5 +1,14 @@
 // src/controllers/ventas.controller.js
 const db = require('../db');
+const { stripe } = require('../pagos/stripe');
+const { PENDIENTE } = require('./pagos.controlador');
+
+// PayPal se cobra en el navegador antes de crear la venta; tarjeta y OXXO se cobran con Stripe después.
+const METODOS_PAGO = ['paypal', 'tarjeta', 'oxxo'];
+// Límites de Stripe para OXXO: de $10 a $10,000 MXN, y la ficha vence a los días indicados.
+const OXXO_MIN_CENTAVOS = 1000;
+const OXXO_MAX_CENTAVOS = 1000000;
+const OXXO_DIAS_VIGENCIA = 3;
 
 /**
  * POST /api/ventas - Crea una nueva venta y sus detalles (Checkout)
@@ -104,6 +113,15 @@ const crearVenta = async (req, res) => {
         return res.status(400).json({ message: 'El carrito debe contener productos únicos y cantidades enteras entre 1 y 100.' });
     }
 
+    const metodoPago = req.body?.metodoPago ?? 'paypal';
+    if (!METODOS_PAGO.includes(metodoPago)) {
+        return res.status(400).json({ message: `El método de pago debe ser uno de: ${METODOS_PAGO.join(', ')}.` });
+    }
+    const conStripe = metodoPago !== 'paypal';
+    if (conStripe && !stripe()) {
+        return res.status(503).json({ message: 'Los pagos con tarjeta y OXXO no están configurados.' });
+    }
+
     let entrega;
     try {
         entrega = await resolverEntrega(req.body);
@@ -137,6 +155,8 @@ const crearVenta = async (req, res) => {
 
     // 1. Obtener un cliente para la transacción
     const client = await db.getClient();
+    let creada = null;
+    let totalCentavos = 0;
 
     try {
         // --- INICIO DE LA TRANSACCIÓN ---
@@ -151,13 +171,21 @@ const crearVenta = async (req, res) => {
             item.precioUnitario = centavos / 100;
             subtotalCentavos += centavos * item.cantidad;
         }
-        const totalCentavos = subtotalCentavos + Math.round(subtotalCentavos * 0.16) + Math.round(Number(entrega.columnas.costo_envio) * 100);
+        totalCentavos = subtotalCentavos + Math.round(subtotalCentavos * 0.16) + Math.round(Number(entrega.columnas.costo_envio) * 100);
         if (!Number.isSafeInteger(totalCentavos) || totalCentavos <= 0 || totalCentavos > 9999999999) throw new Error('Importe fuera del límite permitido.');
+        if (metodoPago === 'oxxo' && (totalCentavos < OXXO_MIN_CENTAVOS || totalCentavos > OXXO_MAX_CENTAVOS)) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ message: 'OXXO solo acepta pagos de $10 a $10,000 MXN. Elige otro método de pago.' });
+        }
         const totalVenta = totalCentavos / 100;
 
         // 2. Insertar en la tabla Venta, con una copia de la entrega elegida (HU7.1).
         // Los nombres de columna salen de resolverEntrega (fijos en el código), nunca del body.
-        const datosVenta = { idusuario, totalventa: totalVenta, estadopedido: 'Pagado', ...entrega.columnas };
+        // Con Stripe la venta espera la confirmación del cobro; con PayPal ya viene pagada.
+        const datosVenta = {
+            idusuario, totalventa: totalVenta, estadopedido: conStripe ? PENDIENTE : 'Pagado',
+            metodo_pago: metodoPago, ...entrega.columnas
+        };
         const columnas = Object.keys(datosVenta);
         const ventaQuery = `
             INSERT INTO "venta" (${columnas.map(c => `"${c}"`).join(', ')})
@@ -172,18 +200,21 @@ const crearVenta = async (req, res) => {
         for (const item of productos) {
             const { idprod, cantidad, precioUnitario } = item;
 
-            // 3a. Verificar y actualizar Stock (Query importante)
-            const stockCheckQuery = `
-                UPDATE "producto"
-                SET "cantstock" = "cantstock" - $1
-                WHERE "idprod" = $2 AND "cantstock" >= $1
-                RETURNING "cantstock"`; // Retorna el nuevo stock o nada si falla la condición
+            // 3a. Verificar y actualizar Stock (Query importante).
+            // Con Stripe el stock se descuenta hasta que se confirma el pago (pagos.controlador.js).
+            if (!conStripe) {
+                const stockCheckQuery = `
+                    UPDATE "producto"
+                    SET "cantstock" = "cantstock" - $1
+                    WHERE "idprod" = $2 AND "cantstock" >= $1
+                    RETURNING "cantstock"`; // Retorna el nuevo stock o nada si falla la condición
 
-            const stockResult = await client.query(stockCheckQuery, [cantidad, idprod]);
+                const stockResult = await client.query(stockCheckQuery, [cantidad, idprod]);
 
-            if (stockResult.rows.length === 0) {
-                // Si la fila no se actualizó, significa que no había stock suficiente o el producto no existe
-                throw new Error(`Stock insuficiente o producto no encontrado para idProd: ${idprod}.`);
+                if (stockResult.rows.length === 0) {
+                    // Si la fila no se actualizó, significa que no había stock suficiente o el producto no existe
+                    throw new Error(`Stock insuficiente o producto no encontrado para idProd: ${idprod}.`);
+                }
             }
 
             // 3b. Insertar en DetalleVenta
@@ -196,20 +227,14 @@ const crearVenta = async (req, res) => {
 
         // 4. Si todo salió bien: COMMIT (confirmar la transacción)
         await client.query('COMMIT');
-
-        res.status(201).json({
-            message: 'Venta creada exitosamente y stock actualizado.',
-            idVenta,
-            fechaVenta,
-            totalVenta
-        });
+        creada = { idVenta, fechaVenta, totalVenta };
 
     } catch (error) {
         // 5. Si algo falló: ROLLBACK (deshacer todos los cambios)
         await client.query('ROLLBACK');
 
         console.error('Error en la transacción de venta:', error);
-        res.status(500).json({
+        return res.status(500).json({
             message: 'Falló la creación de la venta. Se revirtieron los cambios.',
             error: error.message
         });
@@ -217,6 +242,32 @@ const crearVenta = async (req, res) => {
     } finally {
         // 6. Liberar el cliente del pool
         client.release();
+    }
+
+    if (!conStripe) {
+        return res.status(201).json({ message: 'Venta creada exitosamente y stock actualizado.', ...creada });
+    }
+
+    // 7. Tarjeta u OXXO: se crea el cobro en Stripe por el total calculado aquí, nunca por el del navegador.
+    try {
+        const intent = await stripe().paymentIntents.create({
+            amount: totalCentavos,
+            currency: 'mxn',
+            payment_method_types: [metodoPago === 'oxxo' ? 'oxxo' : 'card'],
+            ...(metodoPago === 'oxxo' && { payment_method_options: { oxxo: { expires_after_days: OXXO_DIAS_VIGENCIA } } }),
+            metadata: { idventa: String(creada.idVenta) }
+        }, { idempotencyKey: `venta-${creada.idVenta}` });
+        await db.query('UPDATE venta SET stripe_payment_intent = $1 WHERE idventa = $2', [intent.id, creada.idVenta]);
+        res.status(201).json({
+            message: 'Venta creada; falta completar el pago.',
+            ...creada,
+            estadopedido: PENDIENTE,
+            clientSecret: intent.client_secret
+        });
+    } catch (error) {
+        console.error(`Error al crear el pago en Stripe para la venta ${creada.idVenta}:`, error.message);
+        await db.query(`UPDATE venta SET estadopedido = 'CANCELADO' WHERE idventa = $1`, [creada.idVenta]);
+        res.status(502).json({ message: 'No se pudo iniciar el pago. Intenta de nuevo.' });
     }
 };
 
@@ -284,11 +335,23 @@ const cancelarVenta = async (req, res) => {
         idVenta = Number(idVentaStr); // Convertir a número antes de usarlo en el query
 
         // Un pedido en tránsito o entregado ya salió de la tienda: no se puede regresar su stock al inventario.
-        const actual = await db.query('SELECT estadopedido FROM venta WHERE idventa = $1', [idVenta]);
+        const actual = await db.query('SELECT estadopedido, stripe_payment_intent FROM venta WHERE idventa = $1', [idVenta]);
         const estadoActual = actual.rows[0]?.estadopedido?.toUpperCase();
         if (estadoActual === 'ENTREGADO' || estadoActual === 'EN TRÁNSITO') {
             const motivo = estadoActual === 'ENTREGADO' ? 'ya fue entregado' : 'ya va en camino';
             return res.status(409).json({ message: `El pedido #${idVenta} ${motivo} y no se puede cancelar.` });
+        }
+
+        // Un pedido sin pagar nunca descontó stock: se cancela su cobro en Stripe y no se toca el inventario.
+        if (actual.rows[0]?.estadopedido === PENDIENTE) {
+            const intent = actual.rows[0].stripe_payment_intent;
+            if (intent && stripe()) {
+                await stripe().paymentIntents.cancel(intent).catch(error =>
+                    console.error(`No se pudo cancelar el pago ${intent} en Stripe:`, error.message));
+            }
+            await db.query(`UPDATE venta SET estadopedido = 'CANCELADO' WHERE idventa = $1 AND estadopedido = $2`,
+                [idVenta, PENDIENTE]);
+            return res.status(200).json({ message: `Venta #${idVenta} cancelada antes de pagarse.`, idVenta });
         }
 
         // 3. Llamar al procedimiento almacenado
@@ -320,7 +383,8 @@ const cancelarVenta = async (req, res) => {
 // Columnas de envío y rastreo que se devuelven junto con cada venta.
 const columnasEnvioRastreo = `v.envio_destinatario, v.envio_telefono, v.envio_calle, v.envio_numero,
            v.envio_colonia, v.envio_cp, v.envio_ciudad, v.envio_estado, v.envio_referencias, v.envio_correo,
-           v.paqueteria, v.servicio_envio, v.costo_envio::float AS costo_envio, v.numero_guia`;
+           v.paqueteria, v.servicio_envio, v.costo_envio::float AS costo_envio, v.numero_guia,
+           v.metodo_pago, v.oxxo_ficha_url, v.oxxo_referencia, v.oxxo_vence`;
 
 // Datos del punto medio: la copia guardada en la venta; el JOIN solo cubre ventas sin copia.
 const columnasPunto = `COALESCE(v.entrega_punto_nombre, pe.nombrepunto) AS nombrepunto,

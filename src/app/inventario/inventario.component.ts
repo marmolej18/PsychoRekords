@@ -3,8 +3,9 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AuthService } from '../services/auth.service';
-import { CONDICIONES_PRODUCTO, Producto, ProductosService } from '../services/productos.service';
-import { Observable } from 'rxjs';
+import { CONDICIONES_PRODUCTO, Producto, ProductosService, urlPortada } from '../services/productos.service';
+import { Observable, of, throwError } from 'rxjs';
+import { catchError, switchMap } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -30,6 +31,14 @@ export class InventarioComponent implements OnInit {
   currentProductId: number | null = null;
   formSubmitting = false;
   modalTitle = '';
+
+  // Portada del disco: archivo elegido (se sube al guardar) y vista previa en el modal
+  readonly urlPortada = urlPortada;
+  archivoPortada: File | null = null;
+  vistaPrevia: string | null = null;
+  errorPortada = '';
+  private readonly TIPOS_PORTADA = ['image/jpeg', 'image/png', 'image/webp'];
+  private readonly MAX_PORTADA = 2 * 1024 * 1024;
 
   // Opciones para los selectores
   formatos = ['Vinilo', 'CD', 'Cassette'];
@@ -97,6 +106,7 @@ export class InventarioComponent implements OnInit {
     this.currentProductId = null;
     this.modalTitle = 'Crear Nuevo Producto';
     this.productoForm.reset({ cantStock: 0, precio: 0.00 });
+    this.limpiarPortada(null);
     this.showModal();
   }
 
@@ -119,7 +129,40 @@ export class InventarioComponent implements OnInit {
       cantstock: producto.cantstock,
       precio: producto.precio
     });
+    this.limpiarPortada(urlPortada(producto));
     this.showModal();
+  }
+
+  /** Valida la imagen elegida (tipo y tamaño) y muestra su vista previa; se sube al guardar. */
+  onPortadaSeleccionada(evento: Event): void {
+    const input = evento.target as HTMLInputElement;
+    const archivo = input.files?.[0];
+    if (!archivo) return;
+    if (!this.TIPOS_PORTADA.includes(archivo.type)) {
+      this.errorPortada = 'La portada debe ser una imagen JPG, PNG o WEBP.';
+      input.value = '';
+      return;
+    }
+    if (archivo.size > this.MAX_PORTADA) {
+      this.errorPortada = 'La portada no puede pesar más de 2 MB.';
+      input.value = '';
+      return;
+    }
+    this.limpiarPortada(URL.createObjectURL(archivo));
+    this.archivoPortada = archivo;
+  }
+
+  /** Quita la imagen elegida y deja como vista previa la indicada (la portada actual o ninguna). */
+  private limpiarPortada(vistaPrevia: string | null): void {
+    if (this.vistaPrevia?.startsWith('blob:')) URL.revokeObjectURL(this.vistaPrevia);
+    this.archivoPortada = null;
+    this.errorPortada = '';
+    this.vistaPrevia = vistaPrevia;
+  }
+
+  /** Si la portada por título no existe, la vista previa se oculta en vez de mostrar una imagen rota. */
+  onVistaPreviaError(): void {
+    this.vistaPrevia = null;
   }
 
   /**
@@ -172,9 +215,26 @@ export class InventarioComponent implements OnInit {
       request$ = this.productosService.crearProducto(productoData);
     }
 
-    request$.subscribe({
+    // Primero se guardan los datos del disco; si se eligió una portada, se sube después con su id.
+    const archivo = this.archivoPortada;
+    request$.pipe(
+      switchMap(response => archivo
+        ? this.productosService.subirImagen(response.producto.idprod, archivo).pipe(
+            switchMap(() => of({ ...response, message: `${response.message} Portada actualizada.` })),
+            catchError(err => {
+              // El disco ya se guardó: si se reintenta, debe editarse ese mismo disco, no crear otro.
+              this.isEditMode = true;
+              this.currentProductId = response.producto.idprod;
+              this.cargarProductos();
+              return throwError(() => ({
+                error: { message: `El disco se guardó, pero la portada no: ${err.error?.message || 'intenta de nuevo.'}` }
+              }));
+            }))
+        : of(response))
+    ).subscribe({
       next: (response) => {
         this.formSubmitting = false;
+        this.limpiarPortada(null);
         this.successMessage = response.message;
         this.hideModal();
         this.cargarProductos(); // Recargar la tabla

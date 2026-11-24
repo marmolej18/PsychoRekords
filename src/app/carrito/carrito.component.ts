@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { Observable } from 'rxjs';
 import Swal from 'sweetalert2';
 import { CarritoService } from '../services/carrito.service';
-import { Producto } from '../services/productos.service';
+import { Producto, urlPortada } from '../services/productos.service';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 
@@ -19,6 +19,7 @@ interface CarritoItem {
   styleUrls: ['./carrito.component.css']
 })
 export class CarritoComponent implements OnInit {
+  readonly urlPortada = urlPortada;
   flag = false;
   carritoItems$ = new Observable<CarritoItem[]>();
   subtotal$ = new Observable<number>();

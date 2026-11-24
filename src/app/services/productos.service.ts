@@ -18,6 +18,17 @@ export interface Producto {
   cantstock: number;
   precio: number;
   // Nota: PostgreSQL devuelve NUMERIC como string, por lo que es mejor convertirlo a number en el componente
+  imagen_url?: string | null; // Portada subida desde Inventario (ruta en el backend), o null
+}
+
+const URL_BACKEND = 'http://localhost:3000';
+
+/**
+ * Portada del disco: la que subió el admin; si no hay, la imagen por título de la carpeta public
+ * (como funcionaba antes). Si esa tampoco existe, cada vista muestra el logo con su onImageError.
+ */
+export function urlPortada(producto: Pick<Producto, 'titulo' | 'imagen_url'>): string {
+  return producto.imagen_url ? URL_BACKEND + producto.imagen_url : `/${producto.titulo}.jpg`;
 }
 
 // Interfaz para la respuesta de creación/actualización (por si es necesario tipar mejor)
@@ -30,7 +41,7 @@ interface ProductoResponse {
   providedIn: 'root'
 })
 export class ProductosService {
-  private apiUrl = `http://localhost:3000/api/productos`;
+  private apiUrl = `${URL_BACKEND}/api/productos`;
 
   constructor(private http: HttpClient) { }
 
@@ -79,5 +90,16 @@ export class ProductosService {
   actualizarProducto(id: number, cambios: Partial<Producto>): Observable<ProductoResponse> {
     const headers = this.getAdminHeaders();
     return this.http.put<ProductoResponse>(`${this.apiUrl}/${id}`, cambios, { headers });
+  }
+
+  /**
+   * PUT /api/productos/:id/imagen
+   * Sube o reemplaza la portada del disco (requiere rol de Admin). Sin Content-Type a mano:
+   * el navegador lo pone con el separador que necesita el envío de archivos (multipart).
+   */
+  subirImagen(id: number, archivo: File): Observable<ProductoResponse> {
+    const formulario = new FormData();
+    formulario.append('imagen', archivo);
+    return this.http.put<ProductoResponse>(`${this.apiUrl}/${id}/imagen`, formulario);
   }
 }

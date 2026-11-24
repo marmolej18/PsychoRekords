@@ -1,5 +1,6 @@
 // src/controllers/productos.controller.js
 const db = require('../db');
+const { tipoDeImagen, guardarPortada, eliminarPortada } = require('../almacenamiento/portadas');
 
 /**
  * GET /api/productos - Obtener todos los productos del catálogo
@@ -108,9 +109,41 @@ const actualizarProducto = async (req, res) => {
     }
 };
 
+/**
+ * PUT /api/productos/:id/imagen - Sube o reemplaza la portada de un disco (Admin).
+ * Recibe un archivo 'imagen' (multipart/form-data) de hasta 2 MB: JPG, PNG o WEBP.
+ */
+const subirImagen = async (req, res) => {
+    const idProd = req.params.id;
+    if (!req.file) {
+        return res.status(400).json({ message: 'Selecciona una imagen.' });
+    }
+    const ext = tipoDeImagen(req.file.buffer);
+    if (!ext) {
+        return res.status(400).json({ message: 'La portada debe ser una imagen JPG, PNG o WEBP.' });
+    }
+
+    try {
+        const actual = await db.query('SELECT imagen_url FROM producto WHERE idprod = $1', [idProd]);
+        if (!actual.rows.length) {
+            return res.status(404).json({ message: 'Producto no encontrado.' });
+        }
+
+        const imagenUrl = await guardarPortada(req.file.buffer, ext);
+        const result = await db.query('UPDATE producto SET imagen_url = $1 WHERE idprod = $2 RETURNING *', [imagenUrl, idProd]);
+        await eliminarPortada(actual.rows[0].imagen_url); // la anterior ya no se usa
+
+        res.status(200).json({ message: 'Portada actualizada.', producto: result.rows[0] });
+    } catch (error) {
+        console.error(`Error al subir la portada del producto ${idProd}:`, error);
+        res.status(500).json({ message: 'No se pudo guardar la portada.' });
+    }
+};
+
 module.exports = {
     getProductos,
     getProductoById,
     crearProducto,
-    actualizarProducto
+    actualizarProducto,
+    subirImagen
 };

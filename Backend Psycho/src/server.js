@@ -34,6 +34,13 @@ app.use('/api/reportes', reportesRouter);
 app.use('/api/tarifas-envio', tarifasEnvioRouter);
 app.use('/api/pagos', pagosRouter);
 
+// Portadas que suben los administradores. nosniff: el navegador las trata solo como imágenes.
+app.use('/uploads', express.static(require('./almacenamiento/portadas').CARPETA_UPLOADS, {
+    index: false,
+    dotfiles: 'ignore',
+    setHeaders: res => res.setHeader('X-Content-Type-Options', 'nosniff')
+}));
+
 app.get('/', (req, res) => {
     res.send('API de PsychoRecords funcionando.');
 });

@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { Producto, ProductosService } from '../services/productos.service';
+import { Producto, ProductosService, urlPortada } from '../services/productos.service';
 
 @Component({
   selector: 'app-detalles',
@@ -9,6 +9,7 @@ import { Producto, ProductosService } from '../services/productos.service';
   styleUrl: './detalles.component.css'
 })
 export class DetallesComponent implements OnInit{
+    readonly urlPortada = urlPortada;
     producto: Producto | undefined;
 
     constructor(

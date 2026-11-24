@@ -39,8 +39,14 @@
                 <tr>
                     <td><span class="badge bg-secondary">{{ producto.idprod }}</span></td>
                     <td>
-                        <div class="fw-bold">{{ producto.titulo }}</div>
-                        <div class="small text-muted">{{ producto.artista }} ({{ producto.aniolanzam }})</div>
+                        <div class="d-flex align-items-center gap-2">
+                            <img [src]="urlPortada(producto)" (error)="$any($event.target).src = 'logo.png'"
+                                [alt]="'Portada de ' + producto.titulo" width="40" height="40" class="rounded" style="object-fit: cover;">
+                            <div>
+                                <div class="fw-bold">{{ producto.titulo }}</div>
+                                <div class="small text-muted">{{ producto.artista }} ({{ producto.aniolanzam }})</div>
+                            </div>
+                        </div>
                     </td>
                     <td>{{ producto.formato }}</td>
                     <td class="text-end fw-bold text-primary">${{ producto.precio | number: '1.2-2' }}</td>
@@ -135,6 +141,22 @@
                             <input type="number" class="form-control" formControlName="cantstock"
                                 [ngClass]="{'is-invalid': f['cantstock'].invalid && f['cantstock'].touched}">
                             <div class="invalid-feedback">El stock es obligatorio y no puede ser negativo.</div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="portada">Portada</label>
+                            <div class="d-flex gap-3 align-items-start">
+                                @if (vistaPrevia) {
+                                <img [src]="vistaPrevia" (error)="onVistaPreviaError()" alt="Vista previa de la portada"
+                                    width="96" height="96" class="rounded border" style="object-fit: cover;">
+                                }
+                                <div class="flex-grow-1">
+                                    <input id="portada" type="file" class="form-control" accept="image/jpeg,image/png,image/webp"
+                                        (change)="onPortadaSeleccionada($event)" [class.is-invalid]="errorPortada">
+                                    @if (errorPortada) { <div class="invalid-feedback d-block">{{ errorPortada }}</div> }
+                                    <div class="form-text">JPG, PNG o WEBP de hasta 2 MB. Se guarda al presionar
+                                        "{{ isEditMode ? 'Guardar Cambios' : 'Crear Producto' }}".</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -43,3 +43,6 @@ testem.log
 Thumbs.db
 
 /Backend Psycho/pruebas-locales/
+
+# Portadas que suben los administradores (son datos, no código)
+/Backend Psycho/uploads/

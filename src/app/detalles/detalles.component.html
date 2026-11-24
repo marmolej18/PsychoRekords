@@ -1,6 +1,6 @@
 @if (producto) {
     <div class="detallesLayout">
-        <img [src]="'/' + producto.titulo + '.jpg'" (error)="onImageError($event)" [alt]="producto.titulo" class="imgDetalles">
+        <img [src]="urlPortada(producto)" (error)="onImageError($event)" [alt]="producto.titulo" class="imgDetalles">
 
         <div class="detallesInfo">
             <h1>{{ producto.titulo }}</h1>

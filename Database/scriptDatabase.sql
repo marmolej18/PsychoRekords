@@ -512,3 +512,9 @@ ALTER TABLE venta
     ADD COLUMN IF NOT EXISTS oxxo_ficha_url TEXT,
     ADD COLUMN IF NOT EXISTS oxxo_referencia VARCHAR(40),
     ADD COLUMN IF NOT EXISTS oxxo_vence TIMESTAMP;
+
+
+-- --- PORTADAS DE LOS DISCOS ---
+-- Ruta de la portada que sube el administrador desde Inventario. NULL = se usa la imagen
+-- por título de la carpeta public del frontend (comportamiento anterior) o el logo.
+ALTER TABLE producto ADD COLUMN IF NOT EXISTS imagen_url TEXT;

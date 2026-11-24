@@ -106,7 +106,7 @@
                 <div class="col">
                         <div class="card h-100 shadow-sm">
                             <a [routerLink]="['/detalles', producto.idprod]" routerLinkActive="active">
-                                <img [src]="'/' + producto.titulo + '.jpg'" (error)="onImageError($event)" class="card-img-top producto" alt="Portada de {{producto.titulo}}">
+                                <img [src]="urlPortada(producto)" (error)="onImageError($event)" class="card-img-top producto" alt="Portada de {{producto.titulo}}">
                             </a>
             
                             <div class="card-body d-flex flex-column">

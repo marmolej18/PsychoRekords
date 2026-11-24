@@ -4,7 +4,7 @@ import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subscription, interval } from 'rxjs';
 import Swal from 'sweetalert2';
-import { CONDICIONES_PRODUCTO, Producto, ProductosService } from '../services/productos.service';
+import { CONDICIONES_PRODUCTO, Producto, ProductosService, urlPortada } from '../services/productos.service';
 import { CarritoService } from '../services/carrito.service';
 import { AuthService } from '../services/auth.service';
 
@@ -16,6 +16,7 @@ import { AuthService } from '../services/auth.service';
     styleUrls: ['./catalogo.component.css']
 })
 export class CatalogoComponent implements OnInit, OnDestroy {
+    readonly urlPortada = urlPortada;
     private authService = inject(AuthService);
     user$ = this.authService.currentUser$;
     productos: Producto[] = [];

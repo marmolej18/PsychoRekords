@@ -22,7 +22,7 @@
                             <div class="row align-items-center py-3 border-bottom item-row">
 
                                 <div class="col-12 col-sm-5 d-flex align-items-center">
-                                    <img [src]="item.producto.titulo + '.jpg'"
+                                    <img [src]="urlPortada(item.producto)"
                                         [alt]="'Portada de ' + item.producto.titulo" 
                                         height="50" width="50"
                                         (error)="onImageError($event)" class="me-3 rounded">
